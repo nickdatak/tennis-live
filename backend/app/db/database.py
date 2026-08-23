@@ -8,7 +8,10 @@ from ..config import DATA_DIR, DATABASE_URL, USING_DEV_SQLITE
 from .models import Base
 
 if USING_DEV_SQLITE:
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        pass  # read-only serverless filesystem; init_db will surface the error
 
 # Small pool + recycle: friendly to serverless instances talking to the
 # Supabase pooler (harmless for local SQLite).

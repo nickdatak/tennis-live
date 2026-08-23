@@ -8,17 +8,30 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func, select
 
 from .api import bets, players, predict, refresh
-from .config import FRONTEND_DIR, USING_DEV_SQLITE
+from .config import CONFIG_ERRORS, FRONTEND_DIR, USING_DEV_SQLITE
 from .db.database import SessionLocal, init_db
 from .db.models import Player
 from .schemas import HealthResponse
 from .services.model_runner import model_runner
 
 
+# Startup failures are recorded, not raised: the app must stay alive so
+# /api/health can report exactly what is broken.
+startup_errors: list = []
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_db()
-    model_runner.load()
+    startup_errors.clear()
+    startup_errors.extend(CONFIG_ERRORS)
+    try:
+        init_db()
+    except Exception as error:
+        startup_errors.append(f"database init: {type(error).__name__}: {error}"[:300])
+    try:
+        model_runner.load()
+    except Exception as error:
+        startup_errors.append(f"model load: {type(error).__name__}: {error}"[:300])
     yield
 
 
@@ -38,12 +51,18 @@ def health() -> HealthResponse:
             players_in_db = session.scalar(select(func.count(Player.id)))
     except Exception as error:  # pragma: no cover - depends on external DB
         database_status = f"error: {type(error).__name__}"
+    healthy = (
+        model_runner.is_loaded
+        and database_status == "connected"
+        and not startup_errors
+    )
     return HealthResponse(
-        status="ok" if model_runner.is_loaded and database_status == "connected" else "degraded",
+        status="ok" if healthy else "degraded",
         models_loaded=len(model_runner.pipelines),
         database=database_status,
         using_dev_sqlite=USING_DEV_SQLITE,
         players_in_db=players_in_db,
+        startup_errors=list(startup_errors),
     )
 
 

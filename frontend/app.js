@@ -44,6 +44,34 @@ async function refreshHealth() {
 
 /* ---------- player autocomplete ---------- */
 
+// All ~900 player names are fetched once and cached, so suggestions filter
+// locally with zero per-keystroke requests (important on serverless hosting).
+let playerCache = null;
+let playerCachePromise = null;
+
+function ensurePlayerCache() {
+  if (playerCache) return Promise.resolve();
+  if (!playerCachePromise) {
+    playerCachePromise = fetch("/api/players/all")
+      .then((res) => { if (!res.ok) throw new Error(res.status); return res.json(); })
+      .then((data) => { playerCache = data.players; })
+      .catch(() => { playerCachePromise = null; }); // retry on next use
+  }
+  return playerCachePromise;
+}
+
+function localSearch(query, limit = 8) {
+  const q = query.toLowerCase();
+  const starts = [];
+  const contains = [];
+  for (const player of playerCache) { // cache is pre-sorted by rank
+    const name = player.name.toLowerCase();
+    if (name.startsWith(q)) starts.push(player);
+    else if (name.includes(q) || player.slug.includes(q)) contains.push(player);
+  }
+  return starts.concat(contains).slice(0, limit);
+}
+
 function setupAutocomplete(inputId, listId) {
   const input = document.getElementById(inputId);
   const list = document.getElementById(listId);
@@ -54,10 +82,16 @@ function setupAutocomplete(inputId, listId) {
   const search = debounce(async (query) => {
     if (!query || query.length < 2) { hide(); return; }
     let players = [];
-    try {
-      const res = await fetch(`/api/players?q=${encodeURIComponent(query)}&limit=8`);
-      players = (await res.json()).players;
-    } catch { /* server unreachable; badge already shows it */ }
+    await ensurePlayerCache();
+    if (playerCache) {
+      players = localSearch(query);
+    } else {
+      // Cache unavailable — fall back to server-side search.
+      try {
+        const res = await fetch(`/api/players?q=${encodeURIComponent(query)}&limit=8`);
+        players = (await res.json()).players;
+      } catch { /* server unreachable; badge already shows it */ }
+    }
 
     list.innerHTML = "";
     if (players.length === 0) {
@@ -92,7 +126,10 @@ function setupAutocomplete(inputId, listId) {
     search(input.value.trim());
   });
   input.addEventListener("blur", () => setTimeout(hide, 120));
-  input.addEventListener("focus", () => search(input.value.trim()));
+  input.addEventListener("focus", () => {
+    ensurePlayerCache(); // warm the cache the moment a field is focused
+    search(input.value.trim());
+  });
 
   return {
     value: () => state.confirmedName || input.value.trim(),
@@ -292,4 +329,5 @@ setupForm(player1Field, player2Field, surfacePicker);
 setupRefreshButton();
 refreshHealth();
 refreshLastStatus();
+ensurePlayerCache();
 setInterval(refreshHealth, 30_000);

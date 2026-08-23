@@ -59,3 +59,4 @@ class HealthResponse(BaseModel):
     database: str
     using_dev_sqlite: bool
     players_in_db: Optional[int] = None
+    startup_errors: List[str] = []

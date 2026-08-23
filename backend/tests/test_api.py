@@ -127,3 +127,10 @@ def test_refresh_requires_token_when_configured(client, monkeypatch):
         client.post("/api/refresh", headers={"X-Refresh-Token": "wrong"}).status_code
         == 401
     )
+
+
+def test_players_all_returns_full_ranked_list(client):
+    data = client.get("/api/players/all").json()
+    assert len(data["players"]) > 800
+    ranks = [p["rank"] for p in data["players"] if p["rank"] is not None]
+    assert ranks == sorted(ranks)  # ranked players first, ascending

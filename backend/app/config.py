@@ -31,14 +31,18 @@ _load_dotenv(BACKEND_DIR / ".env")
 
 # Supabase session-pooler URI goes in backend/.env as DATABASE_URL.
 # Without it we fall back to a local SQLite file so development still works.
+# Configuration problems are collected here instead of raising at import —
+# a crashed serverless function cannot explain itself, /api/health can.
+CONFIG_ERRORS = []
+
 DEV_SQLITE_URL = f"sqlite:///{DATA_DIR / 'dev.db'}"
 DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 USING_DEV_SQLITE = not DATABASE_URL
 if USING_DEV_SQLITE:
     if os.environ.get("PRODUCTION", "").strip() in {"1", "true", "yes"}:
-        raise RuntimeError(
-            "PRODUCTION=1 but DATABASE_URL is not set — refusing to fall back "
-            "to local SQLite. Set DATABASE_URL to the Supabase pooler URI."
+        CONFIG_ERRORS.append(
+            "PRODUCTION=1 but DATABASE_URL is not set. "
+            "Set DATABASE_URL to the Supabase pooler URI and redeploy."
         )
     DATABASE_URL = DEV_SQLITE_URL
 

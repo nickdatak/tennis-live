@@ -22,6 +22,17 @@ def player_summary(player: Player) -> PlayerSummary:
     )
 
 
+@router.get("/all", response_model=PlayerSearchResponse)
+def all_players(session: Session = Depends(get_session)) -> PlayerSearchResponse:
+    """Full player list (~900 rows, ~70KB) for client-side autocomplete caching."""
+    players = session.scalars(
+        select(Player).order_by(
+            Player.rank.is_(None), Player.rank.asc(), Player.name.asc()
+        )
+    ).all()
+    return PlayerSearchResponse(query="", players=[player_summary(p) for p in players])
+
+
 @router.get("", response_model=PlayerSearchResponse)
 def search_players(
     q: str = Query("", max_length=100),
