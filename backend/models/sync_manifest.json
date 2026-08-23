@@ -1,0 +1,36 @@
+{
+  "synced_at": "2026-08-23T22:02:13.321072+00:00",
+  "source": "/Users/nick/Desktop/tennis live/research/models",
+  "models": {
+    "Decision Tree": {
+      "file": "decision_tree.joblib",
+      "sha256": "00567b14a86fe8572f24631aede2731bca90128a95b409726f3141614a60d69c",
+      "size_bytes": 11931
+    },
+    "Random Forest": {
+      "file": "random_forest.joblib",
+      "sha256": "1a1a57a97a5993744d107096f73bf7c85ad6babdc4829c87e9f25b8c192ec72a",
+      "size_bytes": 9435564
+    },
+    "XGBoost": {
+      "file": "xgboost.joblib",
+      "sha256": "5ceef01a06c593f75acf4fb911db9a7e7ec1cb587520ee6c097ef48764266fda",
+      "size_bytes": 158940
+    },
+    "LightGBM": {
+      "file": "lightgbm.joblib",
+      "sha256": "e61a5ec95292930bc6bef5ef043f17cdefbeed012b4b6042d951f9e44685d4ec",
+      "size_bytes": 584260
+    },
+    "Logistic Regression": {
+      "file": "logistic_regression.joblib",
+      "sha256": "6015c50060880cf66af8fe9b4f4aedf1a6d8eb13309f243b594ef9f8cf7e1bc8",
+      "size_bytes": 1682
+    },
+    "Simple Neural Net": {
+      "file": "simple_neural_net.joblib",
+      "sha256": "0722d6fec2c79549c77057526612899b5c4b5b855c355c3b5f32c4b7b236cb82",
+      "size_bytes": 64847
+    }
+  }
+}

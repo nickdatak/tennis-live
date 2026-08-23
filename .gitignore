@@ -1,0 +1,17 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Secrets & local state
+backend/.env
+backend/data/dev.db
+
+# Synced model copies ARE committed: Vercel bundles them into the function.
+# Refresh them with backend/scripts/sync_models.py after retraining.
+
+# Notebook checkpoints
+.ipynb_checkpoints/

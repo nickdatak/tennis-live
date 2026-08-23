@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tennis Live</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>🎾 Tennis Live</h1>
+    <div class="topbar-right">
+      <span id="refresh-status" class="refresh-status" title="Last data refresh"></span>
+      <button id="refresh-button" class="refresh-button" title="Fetch new results and rankings from the Tennis API">⟳ Refresh data</button>
+      <span id="health-badge" class="badge" title="Server status">…</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="card" id="predict-card">
+      <h2>Match prediction</h2>
+      <form id="predict-form" autocomplete="off">
+        <div class="players-row">
+          <div class="field player-field">
+            <label for="player1-input">Player 1</label>
+            <input id="player1-input" type="text" placeholder="Start typing a name…" required>
+            <ul class="suggestions" id="player1-suggestions" hidden></ul>
+          </div>
+          <div class="vs">vs</div>
+          <div class="field player-field">
+            <label for="player2-input">Player 2</label>
+            <input id="player2-input" type="text" placeholder="Start typing a name…" required>
+            <ul class="suggestions" id="player2-suggestions" hidden></ul>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Surface</label>
+          <div class="segmented" id="surface-picker" role="radiogroup">
+            <button type="button" class="segment selected" data-surface="Hard">Hard</button>
+            <button type="button" class="segment" data-surface="Clay">Clay</button>
+            <button type="button" class="segment" data-surface="Grass">Grass</button>
+          </div>
+        </div>
+
+        <button type="submit" class="predict-button" id="predict-button">Predict</button>
+        <p class="error" id="predict-error" hidden></p>
+      </form>
+    </section>
+
+    <section class="card" id="results-card" hidden>
+      <h2>Prediction</h2>
+      <div class="mean-result">
+        <div class="mean-names">
+          <span id="result-p1-name"></span>
+          <span id="result-p2-name"></span>
+        </div>
+        <div class="mean-bar">
+          <div class="mean-fill" id="mean-fill"></div>
+        </div>
+        <div class="mean-percents">
+          <span id="result-p1-pct" class="pct p1"></span>
+          <span id="result-p2-pct" class="pct p2"></span>
+        </div>
+        <p class="mean-caption" id="result-caption"></p>
+        <p class="h2h-line" id="h2h-line" hidden></p>
+      </div>
+
+      <h3>Per-model probabilities</h3>
+      <table class="model-table">
+        <thead>
+          <tr><th>Model</th><th class="num" id="th-p1">P1 win</th><th class="num" id="th-p2">P2 win</th><th class="bar-col"></th></tr>
+        </thead>
+        <tbody id="model-rows"></tbody>
+      </table>
+
+      <details class="features-details">
+        <summary>Features used (player 1 first)</summary>
+        <table class="features-table"><tbody id="feature-rows"></tbody></table>
+      </details>
+    </section>
+
+    <section class="card placeholder-card" id="bets-card">
+      <h2>Bet tracking</h2>
+      <p class="placeholder-text">Coming soon — add and track your bets from here.</p>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+# Keep the function bundle small: research data/notebooks are never needed at
+# runtime (models are the committed copies in backend/models/).
+research/
+backend/data/
+backend/tests/
+backend/.env
+players.json
+.claude/
+*.ipynb
+.DS_Store
