@@ -2,7 +2,10 @@
 # ML stack pinned to the training environment — do not bump without
 # re-exporting the joblib artifacts.
 scikit-learn==1.6.1
-xgboost==2.1.4
+# xgboost-cpu, NOT xgboost: on Linux pip resolves plain xgboost to the 224MB
+# CUDA wheel (~800MB unpacked), blowing Vercel's 500MB function limit.
+# xgboost-cpu is the same package/version without GPU support (4.5MB wheel).
+xgboost-cpu==2.1.4
 lightgbm==4.6.0
 joblib==1.5.2
 numpy==1.26.4
