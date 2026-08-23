@@ -1,15 +1,37 @@
 """Load the six trained pipelines once and serve orientation-averaged predictions."""
 from __future__ import annotations
 
+import ctypes
 import datetime
+import sys
 from typing import Dict
 
 import joblib
 import numpy as np
 import pandas as pd
 
-from ..config import MODEL_FEATURE_COLUMNS, MODEL_FILENAMES, MODELS_DIR
+from ..config import BACKEND_DIR, MODEL_FEATURE_COLUMNS, MODEL_FILENAMES, MODELS_DIR
 from .feature_builder import PlayerState, build_feature_frame
+
+
+def _ensure_libgomp() -> None:
+    """Preload the GNU OpenMP runtime on Linux hosts that lack it.
+
+    LightGBM's native library requires libgomp.so.1, which serverless images
+    (e.g. Vercel's) don't ship and LightGBM wheels deliberately don't vendor.
+    Preloading our vendored copy with RTLD_GLOBAL satisfies the dependency;
+    verified against python:3.12-slim, which reproduces the same failure.
+    """
+    if not sys.platform.startswith("linux"):
+        return
+    try:
+        ctypes.CDLL("libgomp.so.1", mode=ctypes.RTLD_GLOBAL)
+        return  # the system provides it
+    except OSError:
+        pass
+    vendored = BACKEND_DIR / "vendor" / "libgomp.so.1"
+    if vendored.is_file():
+        ctypes.CDLL(str(vendored), mode=ctypes.RTLD_GLOBAL)
 
 
 class ModelRunner:
@@ -17,6 +39,7 @@ class ModelRunner:
         self.pipelines: Dict[str, object] = {}
 
     def load(self) -> None:
+        _ensure_libgomp()
         missing = [
             filename
             for filename in MODEL_FILENAMES.values()
