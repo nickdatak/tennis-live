@@ -73,6 +73,11 @@ python3 -m pytest backend/tests -q
 
 ## Data refresh
 
+**Currently disabled to preserve Tennis API quota** — the endpoint returns
+503 and the dashboard button reports it. Re-enable by setting
+`REFRESH_ENABLED=1` (plus `TENNIS_API_KEY` and, on public deployments,
+`REFRESH_TOKEN`). All code paths are intact.
+
 The **⟳ Refresh data** button pulls everything new since the last processed
 date from the Tennis API (RapidAPI: `tennis-api-atp-wta-itf`, key in
 `backend/.env` as `TENNIS_API_KEY`):

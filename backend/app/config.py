@@ -74,6 +74,10 @@ TENNIS_API_HOST = "tennis-api-atp-wta-itf.p.rapidapi.com"
 # Hard ceiling per refresh run so a bug can never spray requests.
 REFRESH_MAX_REQUESTS = 25
 
+# Refresh is DISABLED by default to preserve Tennis API quota. Set
+# REFRESH_ENABLED=1 to turn POST /api/refresh back on; the code is untouched.
+REFRESH_ENABLED = os.environ.get("REFRESH_ENABLED", "").strip() in {"1", "true", "yes"}
+
 # When set, POST /api/refresh requires this value in the X-Refresh-Token
 # header. Set it on any public deployment — every refresh spends API quota.
 REFRESH_TOKEN = os.environ.get("REFRESH_TOKEN", "").strip()

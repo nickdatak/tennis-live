@@ -118,9 +118,16 @@ def test_frontend_served_at_root(client):
     assert "Tennis Live" in response.text
 
 
+def test_refresh_disabled_by_default(client):
+    response = client.post("/api/refresh")
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Refresh disabled to preserve quota."
+
+
 def test_refresh_requires_token_when_configured(client, monkeypatch):
     from app import config
 
+    monkeypatch.setattr(config, "REFRESH_ENABLED", True)
     monkeypatch.setattr(config, "REFRESH_TOKEN", "secret-token")
     assert client.post("/api/refresh").status_code == 401
     assert (

@@ -294,6 +294,10 @@ function setupRefreshButton() {
         return fetch("/api/refresh", { method: "POST", headers });
       };
       let res = await doPost();
+      if (res.status === 503) {
+        statusEl.textContent = "refresh disabled to preserve quota";
+        return;
+      }
       if (res.status === 401) {
         // Deployment is token-protected; ask once and remember for the session.
         const token = window.prompt("This deployment requires a refresh token:");

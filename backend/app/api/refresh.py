@@ -23,6 +23,12 @@ def refresh(
     session: Session = Depends(get_session),
     x_refresh_token: Optional[str] = Header(default=None),
 ) -> dict:
+    # Disabled by default to preserve Tennis API quota (set REFRESH_ENABLED=1
+    # to re-enable). Checked before auth: a disabled endpoint needs no token.
+    if not config.REFRESH_ENABLED:
+        raise HTTPException(
+            status_code=503, detail="Refresh disabled to preserve quota."
+        )
     # Every refresh spends Tennis API quota; on public deployments the
     # endpoint is gated by REFRESH_TOKEN.
     if config.REFRESH_TOKEN:
