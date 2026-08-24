@@ -30,14 +30,14 @@ async function refreshHealth() {
     const data = await res.json();
     const dbNote = data.using_dev_sqlite ? " · dev DB" : "";
     if (data.status === "ok") {
-      badge.textContent = `● ${data.models_loaded} models · ${data.players_in_db} players${dbNote}`;
+      badge.textContent = `${data.models_loaded} models · ${data.players_in_db} players${dbNote}`;
       badge.className = "badge ok";
     } else {
-      badge.textContent = `● degraded (${data.database})`;
+      badge.textContent = `Degraded · ${data.database}`;
       badge.className = "badge bad";
     }
   } catch {
-    badge.textContent = "● server unreachable";
+    badge.textContent = "Server unreachable";
     badge.className = "badge bad";
   }
 }
@@ -143,8 +143,12 @@ function setupSurfacePicker() {
   picker.addEventListener("click", (event) => {
     const button = event.target.closest(".segment");
     if (!button) return;
-    picker.querySelectorAll(".segment").forEach((b) => b.classList.remove("selected"));
+    picker.querySelectorAll(".segment").forEach((b) => {
+      b.classList.remove("selected");
+      b.setAttribute("aria-checked", "false");
+    });
     button.classList.add("selected");
+    button.setAttribute("aria-checked", "true");
   });
   return { value: () => picker.querySelector(".segment.selected").dataset.surface };
 }
@@ -222,6 +226,8 @@ function renderResults(data) {
   }
 
   card.hidden = false;
+  card.classList.remove("is-visible");
+  requestAnimationFrame(() => card.classList.add("is-visible"));
   card.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
@@ -230,13 +236,16 @@ function renderResults(data) {
 function setupForm(player1Field, player2Field, surfacePicker) {
   const form = document.getElementById("predict-form");
   const button = document.getElementById("predict-button");
+  const buttonLabel = button.querySelector("span");
   const errorEl = document.getElementById("predict-error");
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     errorEl.hidden = true;
     button.disabled = true;
-    button.textContent = "Predicting…";
+    button.classList.add("is-loading");
+    button.setAttribute("aria-busy", "true");
+    buttonLabel.textContent = "Analyzing matchup";
     try {
       const res = await fetch("/api/predict", {
         method: "POST",
@@ -258,7 +267,9 @@ function setupForm(player1Field, player2Field, surfacePicker) {
       document.getElementById("results-card").hidden = true;
     } finally {
       button.disabled = false;
-      button.textContent = "Predict";
+      button.classList.remove("is-loading");
+      button.removeAttribute("aria-busy");
+      buttonLabel.textContent = "Run prediction";
     }
   });
 }
@@ -281,10 +292,13 @@ async function refreshLastStatus() {
 
 function setupRefreshButton() {
   const button = document.getElementById("refresh-button");
+  const buttonLabel = button.querySelector(".refresh-label");
   const statusEl = document.getElementById("refresh-status");
   button.addEventListener("click", async () => {
     button.disabled = true;
-    button.textContent = "⟳ Refreshing…";
+    button.classList.add("is-loading");
+    button.setAttribute("aria-busy", "true");
+    buttonLabel.textContent = "Refreshing";
     statusEl.textContent = "";
     try {
       const doPost = () => {
@@ -312,14 +326,16 @@ function setupRefreshButton() {
       if (data.retired_skipped) parts.push(`${data.retired_skipped} retired skipped`);
       if (data.new_players) parts.push(`${data.new_players} new players`);
       if (data.rank_updates) parts.push(`${data.rank_updates} rank changes`);
-      statusEl.textContent = `✓ ${parts.join(" · ")}`;
+      statusEl.textContent = parts.join(" · ");
       refreshHealth();
       setTimeout(refreshLastStatus, 6000);
     } catch (error) {
       statusEl.textContent = `refresh failed: ${error.message}`;
     } finally {
       button.disabled = false;
-      button.textContent = "⟳ Refresh data";
+      button.classList.remove("is-loading");
+      button.removeAttribute("aria-busy");
+      buttonLabel.textContent = "Refresh";
     }
   });
 }

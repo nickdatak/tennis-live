@@ -3,88 +3,228 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tennis Live</title>
+  <meta name="theme-color" content="#f4f2f5">
+  <meta name="description" content="Surface-aware tennis match intelligence powered by an ensemble of predictive models.">
+  <title>Tennis Live — Match Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header class="topbar">
-    <h1>🎾 Tennis Live</h1>
-    <div class="topbar-right">
-      <span id="refresh-status" class="refresh-status" title="Last data refresh"></span>
-      <button id="refresh-button" class="refresh-button" title="Fetch new results and rankings from the Tennis API">⟳ Refresh data</button>
-      <span id="health-badge" class="badge" title="Server status">…</span>
-    </div>
-  </header>
+  <div class="page-background" aria-hidden="true"></div>
 
-  <main>
-    <section class="card" id="predict-card">
-      <h2>Match prediction</h2>
-      <form id="predict-form" autocomplete="off">
-        <div class="players-row">
-          <div class="field player-field">
-            <label for="player1-input">Player 1</label>
-            <input id="player1-input" type="text" placeholder="Start typing a name…" required>
-            <ul class="suggestions" id="player1-suggestions" hidden></ul>
-          </div>
-          <div class="vs">vs</div>
-          <div class="field player-field">
-            <label for="player2-input">Player 2</label>
-            <input id="player2-input" type="text" placeholder="Start typing a name…" required>
-            <ul class="suggestions" id="player2-suggestions" hidden></ul>
-          </div>
-        </div>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Tennis Live home">
+        <strong>Tennis Live</strong>
+        <small>Match intelligence</small>
+      </a>
 
-        <div class="field">
-          <label>Surface</label>
-          <div class="segmented" id="surface-picker" role="radiogroup">
-            <button type="button" class="segment selected" data-surface="Hard">Hard</button>
-            <button type="button" class="segment" data-surface="Clay">Clay</button>
-            <button type="button" class="segment" data-surface="Grass">Grass</button>
-          </div>
-        </div>
-
-        <button type="submit" class="predict-button" id="predict-button">Predict</button>
-        <p class="error" id="predict-error" hidden></p>
-      </form>
-    </section>
-
-    <section class="card" id="results-card" hidden>
-      <h2>Prediction</h2>
-      <div class="mean-result">
-        <div class="mean-names">
-          <span id="result-p1-name"></span>
-          <span id="result-p2-name"></span>
-        </div>
-        <div class="mean-bar">
-          <div class="mean-fill" id="mean-fill"></div>
-        </div>
-        <div class="mean-percents">
-          <span id="result-p1-pct" class="pct p1"></span>
-          <span id="result-p2-pct" class="pct p2"></span>
-        </div>
-        <p class="mean-caption" id="result-caption"></p>
-        <p class="h2h-line" id="h2h-line" hidden></p>
+      <div class="topbar-right">
+        <span id="refresh-status" class="refresh-status" title="Last data refresh"></span>
+        <button id="refresh-button" class="refresh-button" type="button" title="Fetch new results and rankings from the Tennis API">
+          <span class="refresh-label">Refresh data</span>
+        </button>
+        <span id="health-badge" class="badge" title="Server status">Connecting</span>
       </div>
+    </header>
 
-      <h3>Per-model probabilities</h3>
-      <table class="model-table">
-        <thead>
-          <tr><th>Model</th><th class="num" id="th-p1">P1 win</th><th class="num" id="th-p2">P2 win</th><th class="bar-col"></th></tr>
-        </thead>
-        <tbody id="model-rows"></tbody>
-      </table>
+    <main>
+      <section class="workspace" id="predict-card" aria-labelledby="workspace-title">
+        <div class="workspace-heading">
+          <div>
+            <span class="eyebrow">Prediction workspace</span>
+            <h1 id="workspace-title">Match analysis</h1>
+          </div>
+          <div class="workspace-meta">
+            <span>Framework</span>
+            <strong>Surface-aware ensemble</strong>
+          </div>
+        </div>
 
-      <details class="features-details">
-        <summary>Features used (player 1 first)</summary>
-        <table class="features-table"><tbody id="feature-rows"></tbody></table>
-      </details>
-    </section>
+        <div class="workspace-grid">
+          <div class="arena-panel">
+            <img src="arena-hero.png" alt="A packed indoor tennis arena viewed from above" fetchpriority="high" decoding="async">
+            <div class="arena-shade" aria-hidden="true"></div>
+            <div class="arena-caption">
+              <span>Model environment</span>
+              <strong>Pre-match · Surface weighted</strong>
+            </div>
+          </div>
 
-    <section class="card placeholder-card" id="bets-card">
-      <h2>Bet tracking</h2>
-      <p class="placeholder-text">Coming soon — add and track your bets from here.</p>
-    </section>
-  </main>
+          <section class="prediction-panel" aria-labelledby="predict-title">
+            <div class="panel-heading">
+              <div>
+                <span class="eyebrow">New prediction</span>
+                <h2 id="predict-title">Select matchup</h2>
+              </div>
+              <span class="model-pill">Models ready</span>
+            </div>
+
+            <form id="predict-form" autocomplete="off">
+              <div class="players-row">
+                <div class="field player-field">
+                  <label for="player1-input">
+                    <span>Player one</span>
+                    <small>Competitor</small>
+                  </label>
+                  <input id="player1-input" type="text" placeholder="Search player" required>
+                  <ul class="suggestions" id="player1-suggestions" hidden></ul>
+                </div>
+
+                <div class="vs" aria-hidden="true">VS</div>
+
+                <div class="field player-field">
+                  <label for="player2-input">
+                    <span>Player two</span>
+                    <small>Competitor</small>
+                  </label>
+                  <input id="player2-input" type="text" placeholder="Search player" required>
+                  <ul class="suggestions" id="player2-suggestions" hidden></ul>
+                </div>
+              </div>
+
+              <div class="form-bottom">
+                <fieldset class="field surface-field">
+                  <legend>
+                    <span>Playing surface</span>
+                    <small>Model weighting</small>
+                  </legend>
+                  <div class="segmented" id="surface-picker" role="radiogroup" aria-label="Playing surface">
+                    <button type="button" class="segment selected" data-surface="Hard" role="radio" aria-checked="true">Hard</button>
+                    <button type="button" class="segment" data-surface="Clay" role="radio" aria-checked="false">Clay</button>
+                    <button type="button" class="segment" data-surface="Grass" role="radio" aria-checked="false">Grass</button>
+                  </div>
+                </fieldset>
+
+                <button type="submit" class="predict-button" id="predict-button">
+                  <span>Run prediction</span>
+                </button>
+              </div>
+              <p class="error" id="predict-error" hidden></p>
+            </form>
+
+            <dl class="input-summary">
+              <div>
+                <dt>Ratings</dt>
+                <dd>Global + surface Elo</dd>
+              </div>
+              <div>
+                <dt>Form</dt>
+                <dd>Recency + workload</dd>
+              </div>
+              <div>
+                <dt>Context</dt>
+                <dd>Rank + head-to-head</dd>
+              </div>
+            </dl>
+          </section>
+        </div>
+      </section>
+
+      <section class="results-card" id="results-card" hidden>
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Ensemble forecast</span>
+            <h2>Match prediction</h2>
+          </div>
+          <div class="forecast-status">Analysis complete</div>
+        </div>
+
+        <div class="forecast-layout">
+          <div class="mean-result">
+            <div class="mean-label">Win probability</div>
+            <div class="mean-names">
+              <span id="result-p1-name"></span>
+              <span id="result-p2-name"></span>
+            </div>
+            <div class="mean-percents">
+              <span id="result-p1-pct" class="pct p1"></span>
+              <span id="result-p2-pct" class="pct p2"></span>
+            </div>
+            <div class="mean-bar" aria-label="Predicted win probability">
+              <div class="mean-fill" id="mean-fill"></div>
+              <span class="bar-midpoint" aria-hidden="true"></span>
+            </div>
+            <p class="mean-caption" id="result-caption"></p>
+            <p class="h2h-line" id="h2h-line" hidden></p>
+          </div>
+
+          <aside class="forecast-note">
+            <span>Model reading</span>
+            <strong>Probability, not certainty.</strong>
+            <p>The spread below shows how strongly the individual models agree with the ensemble result.</p>
+            <div class="note-factors" aria-label="Forecast input categories">
+              <span>Elo</span>
+              <span>Form</span>
+              <span>H2H</span>
+            </div>
+          </aside>
+        </div>
+
+        <div class="model-breakdown">
+          <div class="breakdown-heading">
+            <div>
+              <strong>Model breakdown</strong>
+              <small>Ordered by player one win probability</small>
+            </div>
+            <span>Player one signal</span>
+          </div>
+          <div class="table-scroll">
+            <table class="model-table">
+              <thead>
+                <tr>
+                  <th>Model</th>
+                  <th class="num" id="th-p1">P1 win</th>
+                  <th class="num" id="th-p2">P2 win</th>
+                  <th class="bar-col">Confidence split</th>
+                </tr>
+              </thead>
+              <tbody id="model-rows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <details class="features-details">
+          <summary>
+            <span>
+              <strong>Model inputs</strong>
+              <small>Features used, player one first</small>
+            </span>
+            <span>Show details</span>
+          </summary>
+          <div class="features-wrap">
+            <table class="features-table"><tbody id="feature-rows"></tbody></table>
+          </div>
+        </details>
+      </section>
+
+      <section class="tracking-card" id="bets-card">
+        <div>
+          <span class="eyebrow">Workspace module</span>
+          <h2>Bet tracking</h2>
+          <p>Position history, closing-line movement and model performance will appear here.</p>
+        </div>
+        <dl class="module-summary">
+          <div>
+            <dt>Status</dt>
+            <dd>In development</dd>
+          </div>
+          <div>
+            <dt>Planned metrics</dt>
+            <dd>ROI · CLV · Hit rate</dd>
+          </div>
+        </dl>
+      </section>
+    </main>
+
+    <footer>
+      <strong>Tennis Live</strong>
+      <p>Built for analysis. Not financial advice.</p>
+      <a href="#predict-card">New prediction</a>
+    </footer>
+  </div>
 
   <script src="app.js"></script>
 </body>
