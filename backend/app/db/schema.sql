@@ -64,9 +64,3 @@ create table if not exists refresh_log (
 
 -- Tennis API player id mapping lives on players.
 alter table players add column if not exists api_player_id bigint unique;
-
--- Placeholder for future bet tracking.
-create table if not exists bets (
-  id          bigint generated always as identity primary key,
-  created_at  timestamptz not null default now()
-);

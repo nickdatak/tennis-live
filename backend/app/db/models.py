@@ -91,14 +91,3 @@ class RefreshLog(Base):
     rank_updates: Mapped[int] = mapped_column(Integer, default=0)
     requests_used: Mapped[int] = mapped_column(Integer, default=0)
     detail: Mapped[str] = mapped_column(String, nullable=True)
-
-
-class Bet(Base):
-    """Placeholder for the future bet-tracking feature."""
-
-    __tablename__ = "bets"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )

@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func, select
 
-from .api import bets, players, predict, refresh
+from .api import players, predict, refresh
 from .config import CONFIG_ERRORS, FRONTEND_DIR, USING_DEV_SQLITE
 from .db.database import SessionLocal, init_db
 from .db.models import Player
@@ -39,7 +39,6 @@ app = FastAPI(title="Tennis Live", lifespan=lifespan)
 app.include_router(players.router)
 app.include_router(predict.router)
 app.include_router(refresh.router)
-app.include_router(bets.router)
 
 
 @app.get("/api/health", response_model=HealthResponse)
