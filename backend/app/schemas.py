@@ -66,6 +66,55 @@ class PredictResponse(BaseModel):
     head_to_head: HeadToHead
 
 
+class BacktestModelScore(BaseModel):
+    model: str
+    is_benchmark: bool
+    n_scored: int
+    brier: float
+    log_loss: float
+    accuracy: float
+    n_bets: int
+    n_bet_wins: int
+    staked: float
+    profit: float
+    roi: Optional[float] = None
+
+
+class BacktestSummary(BaseModel):
+    run_id: int
+    computed_at: Optional[datetime.datetime] = None
+    dataset: str
+    dataset_start: datetime.date
+    dataset_end: datetime.date
+    n_matches: int
+    trained_through: Optional[datetime.date] = None
+    model_source: str
+    stake: float
+    models: List[BacktestModelScore]
+
+
+class BacktestSurfaceBreakdown(BaseModel):
+    surface: str
+    n_bets: int
+    n_wins: int
+    profit: float
+    roi: Optional[float] = None
+
+
+class EquityPoint(BaseModel):
+    date: datetime.date
+    cumulative_profit: float
+    cumulative_bets: int
+
+
+class ModelBreakdownResponse(BaseModel):
+    run_id: int
+    model: str
+    stake: float
+    surfaces: List[BacktestSurfaceBreakdown]
+    equity: List[EquityPoint]
+
+
 class HealthResponse(BaseModel):
     status: str
     models_loaded: int

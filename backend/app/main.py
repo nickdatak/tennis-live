@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func, select
 
-from .api import players, predict, refresh
+from .api import backtest, players, predict, refresh
 from .config import CONFIG_ERRORS, FRONTEND_DIR, USING_DEV_SQLITE
 from .db.database import SessionLocal, init_db
 from .db.models import Player
@@ -38,6 +38,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Tennis Live", lifespan=lifespan)
 app.include_router(players.router)
 app.include_router(predict.router)
+app.include_router(backtest.router)
 app.include_router(refresh.router)
 
 

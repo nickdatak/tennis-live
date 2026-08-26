@@ -437,6 +437,156 @@ function setupRefreshButton() {
   });
 }
 
+/* ---------- backtest ---------- */
+
+// Read-only: these numbers are precomputed by backend/scripts/run_backtest.py
+// and simply queried here. Nothing is scored in the browser or the API.
+function formatMoney(value) {
+  const sign = value < 0 ? "−" : "+";
+  return `${sign}$${Math.abs(value).toFixed(2)}`;
+}
+
+function formatSignedPct(value) {
+  if (value == null) return "—";
+  return `${value < 0 ? "−" : "+"}${Math.abs(value * 100).toFixed(2)}%`;
+}
+
+function renderEquityChart(points) {
+  const svg = document.getElementById("equity-chart");
+  svg.innerHTML = "";
+  if (!points.length) return;
+
+  const width = 720;
+  const height = 200;
+  const pad = 8;
+  const profits = points.map((p) => p.cumulative_profit);
+  const min = Math.min(0, ...profits);
+  const max = Math.max(0, ...profits);
+  const span = max - min || 1;
+  const x = (i) => pad + (i / Math.max(points.length - 1, 1)) * (width - pad * 2);
+  const y = (v) => pad + (1 - (v - min) / span) * (height - pad * 2);
+
+  const ns = "http://www.w3.org/2000/svg";
+  const zero = document.createElementNS(ns, "line");
+  zero.setAttribute("x1", pad);
+  zero.setAttribute("x2", width - pad);
+  zero.setAttribute("y1", y(0));
+  zero.setAttribute("y2", y(0));
+  zero.setAttribute("class", "equity-zero");
+  svg.appendChild(zero);
+
+  const d = points.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.cumulative_profit).toFixed(1)}`).join(" ");
+
+  const area = document.createElementNS(ns, "path");
+  area.setAttribute("d", `${d} L${x(points.length - 1).toFixed(1)},${y(0).toFixed(1)} L${x(0).toFixed(1)},${y(0).toFixed(1)} Z`);
+  area.setAttribute("class", "equity-area");
+  svg.appendChild(area);
+
+  const line = document.createElementNS(ns, "path");
+  line.setAttribute("d", d);
+  line.setAttribute("class", "equity-line");
+  svg.appendChild(line);
+}
+
+async function loadBacktestModel(model) {
+  document.getElementById("backtest-detail-model").textContent = model;
+  const picker = document.getElementById("backtest-model-picker");
+  picker.querySelectorAll(".segment").forEach((button) => {
+    const active = button.dataset.model === model;
+    button.classList.toggle("selected", active);
+    button.setAttribute("aria-checked", String(active));
+  });
+
+  const { response, data } = await fetchJson(
+    `/api/backtest/model?model=${encodeURIComponent(model)}`
+  );
+  if (!response.ok) return;
+
+  const tbody = document.getElementById("backtest-surface-rows");
+  tbody.innerHTML = "";
+  for (const row of data.surfaces) {
+    const tr = document.createElement("tr");
+    const cells = [
+      row.surface,
+      formatInteger(row.n_bets),
+      formatInteger(row.n_wins),
+      formatMoney(row.profit),
+      formatSignedPct(row.roi),
+    ];
+    cells.forEach((text, index) => {
+      const td = document.createElement("td");
+      td.textContent = text;
+      if (index > 0) td.className = "num";
+      if (index >= 3) td.classList.add(row.profit < 0 ? "negative" : "positive");
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  }
+
+  const last = data.equity[data.equity.length - 1];
+  document.getElementById("equity-caption").textContent = last
+    ? `Cumulative profit across ${formatInteger(last.cumulative_bets)} bets · ending ${formatMoney(last.cumulative_profit)}`
+    : "No bets placed.";
+  renderEquityChart(data.equity);
+}
+
+async function loadBacktest() {
+  const card = document.getElementById("backtest-card");
+  const { response, data } = await fetchJson("/api/backtest");
+  if (!response.ok) return; // no stored backtest: leave the section hidden
+
+  document.getElementById("backtest-computed").textContent = formatDate(data.dataset_end);
+  document.getElementById("backtest-intro").textContent =
+    `${formatInteger(data.n_matches)} matches from ${formatDate(data.dataset_start)} to ` +
+    `${formatDate(data.dataset_end)}, scored by models trained only through ` +
+    `${formatDate(data.trained_through)}. Flat $${data.stake.toFixed(0)} stake per bet.`;
+
+  const tbody = document.getElementById("backtest-rows");
+  const picker = document.getElementById("backtest-model-picker");
+  tbody.innerHTML = "";
+  picker.innerHTML = "";
+
+  for (const row of data.models) {
+    const tr = document.createElement("tr");
+    if (row.is_benchmark) tr.className = "benchmark-row";
+    const hit = row.n_bets ? formatPct(row.n_bet_wins / row.n_bets) : "—";
+    const cells = [
+      row.model,
+      row.brier.toFixed(5),
+      row.log_loss.toFixed(5),
+      formatPct(row.accuracy),
+      row.n_bets ? formatInteger(row.n_bets) : "—",
+      hit,
+      row.n_bets ? formatMoney(row.profit) : "—",
+      row.n_bets ? formatSignedPct(row.roi) : "—",
+    ];
+    cells.forEach((text, index) => {
+      const td = document.createElement("td");
+      td.textContent = text;
+      if (index > 0) td.className = "num";
+      if (index >= 6 && row.n_bets) td.classList.add(row.profit < 0 ? "negative" : "positive");
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+
+    if (!row.is_benchmark) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "segment";
+      button.dataset.model = row.model;
+      button.setAttribute("role", "radio");
+      button.setAttribute("aria-checked", "false");
+      button.textContent = row.model;
+      button.addEventListener("click", () => loadBacktestModel(row.model));
+      picker.appendChild(button);
+    }
+  }
+
+  card.hidden = false;
+  const best = data.models.find((row) => !row.is_benchmark);
+  if (best) await loadBacktestModel(best.model);
+}
+
 /* ---------- init ---------- */
 
 const player1Field = setupAutocomplete("player1-input", "player1-suggestions");
@@ -447,4 +597,5 @@ setupRefreshButton();
 refreshHealth();
 refreshLastStatus();
 ensurePlayerCache();
+loadBacktest();
 setInterval(refreshHealth, 30_000);

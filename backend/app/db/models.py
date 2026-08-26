@@ -3,7 +3,16 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, String, func
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    func,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -91,3 +100,106 @@ class RefreshLog(Base):
     rank_updates: Mapped[int] = mapped_column(Integer, default=0)
     requests_used: Mapped[int] = mapped_column(Integer, default=0)
     detail: Mapped[str] = mapped_column(String, nullable=True)
+
+
+class BacktestRun(Base):
+    """One backtest execution. Produced only by backend/scripts/run_backtest.py.
+
+    The dashboard never computes a backtest — it reads these tables. Rerun
+    locally when the models are replaced.
+    """
+
+    __tablename__ = "backtest_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    dataset: Mapped[str] = mapped_column(String)  # e.g. "test_2026"
+    dataset_start: Mapped[datetime.date] = mapped_column(Date)
+    dataset_end: Mapped[datetime.date] = mapped_column(Date)
+    n_matches: Mapped[int] = mapped_column(Integer)
+    # sha256 over the scored joblib files: lets a rerun detect unchanged models.
+    models_fingerprint: Mapped[str] = mapped_column(String)
+    model_source: Mapped[str] = mapped_column(String)
+    trained_through: Mapped[datetime.date] = mapped_column(Date, nullable=True)
+    stake: Mapped[float] = mapped_column(Float, default=1.0)
+
+    results: Mapped[list["BacktestModelResult"]] = relationship(
+        back_populates="run", cascade="all, delete-orphan"
+    )
+
+
+class BacktestModelResult(Base):
+    """Aggregate scores for one model (or the Bet365 benchmark) in one run."""
+
+    __tablename__ = "backtest_model_results"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    run_id: Mapped[int] = mapped_column(
+        ForeignKey("backtest_runs.id", ondelete="CASCADE"), index=True
+    )
+    model: Mapped[str] = mapped_column(String)
+    is_benchmark: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Probability accuracy (models: all matches; Bet365: matches it priced).
+    n_scored: Mapped[int] = mapped_column(Integer)
+    brier: Mapped[float] = mapped_column(Float)
+    log_loss: Mapped[float] = mapped_column(Float)
+    accuracy: Mapped[float] = mapped_column(Float)
+
+    # Flat-stake betting simulation against Bet365 prices.
+    n_bets: Mapped[int] = mapped_column(Integer, default=0)
+    n_bet_wins: Mapped[int] = mapped_column(Integer, default=0)
+    staked: Mapped[float] = mapped_column(Float, default=0.0)
+    profit: Mapped[float] = mapped_column(Float, default=0.0)
+    roi: Mapped[float] = mapped_column(Float, nullable=True)
+
+    run: Mapped[BacktestRun] = relationship(back_populates="results")
+
+
+class BacktestMatch(Base):
+    """One scored match, with the context recovered from the research dataset."""
+
+    __tablename__ = "backtest_matches"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    run_id: Mapped[int] = mapped_column(
+        ForeignKey("backtest_runs.id", ondelete="CASCADE"), index=True
+    )
+    row_index: Mapped[int] = mapped_column(Integer)  # position in the split file
+    match_date: Mapped[datetime.date] = mapped_column(Date, index=True)
+    player1: Mapped[str] = mapped_column(String)
+    player2: Mapped[str] = mapped_column(String)
+    surface: Mapped[str] = mapped_column(String, nullable=True, index=True)
+    series: Mapped[str] = mapped_column(String, nullable=True)
+    tournament: Mapped[str] = mapped_column(String, nullable=True)
+    player1_won: Mapped[bool] = mapped_column(Boolean)
+    b365_p1_odds: Mapped[float] = mapped_column(Float, nullable=True)
+    b365_p2_odds: Mapped[float] = mapped_column(Float, nullable=True)
+
+    predictions: Mapped[list["BacktestPrediction"]] = relationship(
+        back_populates="match", cascade="all, delete-orphan"
+    )
+
+
+class BacktestPrediction(Base):
+    """One model's probability and resulting bet for one match."""
+
+    __tablename__ = "backtest_predictions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    run_id: Mapped[int] = mapped_column(
+        ForeignKey("backtest_runs.id", ondelete="CASCADE"), index=True
+    )
+    match_id: Mapped[int] = mapped_column(
+        ForeignKey("backtest_matches.id", ondelete="CASCADE"), index=True
+    )
+    model: Mapped[str] = mapped_column(String, index=True)
+    prob_player1: Mapped[float] = mapped_column(Float)
+    # Betting outcome: bet_side is None when no positive-EV side existed.
+    bet_side: Mapped[str] = mapped_column(String, nullable=True)  # 'player1'|'player2'
+    bet_odds: Mapped[float] = mapped_column(Float, nullable=True)
+    bet_profit: Mapped[float] = mapped_column(Float, nullable=True)
+
+    match: Mapped[BacktestMatch] = relationship(back_populates="predictions")

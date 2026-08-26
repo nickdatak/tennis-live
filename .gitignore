@@ -10,6 +10,9 @@ __pycache__/
 backend/.env
 backend/data/dev.db
 
+# Local audit artifact from run_backtest.py; the DB holds the real results.
+backend/data/backtest_predictions.csv
+
 # Synced model copies ARE committed: Vercel bundles them into the function.
 # Refresh them with backend/scripts/sync_models.py after retraining.
 
