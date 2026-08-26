@@ -328,6 +328,28 @@ function renderResults(data) {
   setPredictState("result");
 }
 
+/* ---------- loading overlay ---------- */
+
+// A prediction can return in well under a second, and an overlay that appears
+// and vanishes in 100ms reads as a glitch. Once shown it stays up for at least
+// this long.
+const MIN_LOADING_MS = 550;
+
+function showLoading(text) {
+  const overlay = document.getElementById("loading-overlay");
+  if (text) document.getElementById("loading-text").textContent = text;
+  overlay.hidden = false;
+  return performance.now();
+}
+
+async function hideLoading(startedAt) {
+  const elapsed = performance.now() - startedAt;
+  if (elapsed < MIN_LOADING_MS) {
+    await new Promise((resolve) => setTimeout(resolve, MIN_LOADING_MS - elapsed));
+  }
+  document.getElementById("loading-overlay").hidden = true;
+}
+
 /* ---------- form submission ---------- */
 
 function setupForm(player1Field, player2Field, surfacePicker) {
@@ -343,6 +365,7 @@ function setupForm(player1Field, player2Field, surfacePicker) {
     button.classList.add("is-loading");
     button.setAttribute("aria-busy", "true");
     buttonLabel.textContent = "Analyzing matchup";
+    const loadingStartedAt = showLoading("Analysing matchup");
     try {
       const request = {
         player1: player1Field.value(),
@@ -384,6 +407,7 @@ function setupForm(player1Field, player2Field, surfacePicker) {
       errorEl.hidden = false;
       setPredictState("compose");
     } finally {
+      await hideLoading(loadingStartedAt);
       button.disabled = false;
       button.classList.remove("is-loading");
       button.removeAttribute("aria-busy");

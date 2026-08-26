@@ -310,6 +310,29 @@
     </main>
   </div>
 
+    <!-- Shown while a prediction is in flight. -->
+    <div class="loading-overlay" id="loading-overlay" role="status" aria-live="polite" hidden>
+      <div class="loading-stage">
+        <div class="ball-bounce">
+          <svg class="tennis-ball" viewBox="0 0 100 100" aria-hidden="true">
+            <defs>
+              <radialGradient id="ball-face" cx="37%" cy="30%" r="74%">
+                <stop offset="0%" stop-color="#f4ff86"/>
+                <stop offset="52%" stop-color="#d9ef47"/>
+                <stop offset="100%" stop-color="#98b229"/>
+              </radialGradient>
+            </defs>
+            <circle cx="50" cy="50" r="46" fill="url(#ball-face)"/>
+            <!-- The two curved seams that make a ball read as a tennis ball. -->
+            <path class="seam" d="M16,18 C36,38 36,62 16,82"/>
+            <path class="seam" d="M84,18 C64,38 64,62 84,82"/>
+          </svg>
+        </div>
+        <div class="ball-shadow" aria-hidden="true"></div>
+        <p class="loading-text" id="loading-text">Analysing matchup</p>
+      </div>
+    </div>
+
   <script src="app.js"></script>
 </body>
 </html>
