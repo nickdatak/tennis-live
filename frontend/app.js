@@ -21,6 +21,43 @@ function formatPct(probability) {
   return `${(probability * 100).toFixed(1)}%`;
 }
 
+function formatInteger(value) {
+  if (value == null || !Number.isFinite(Number(value))) return "—";
+  return Math.round(Number(value)).toLocaleString("en-US");
+}
+
+function formatRank(rank) {
+  return rank == null ? "Unranked" : `#${formatInteger(rank)}`;
+}
+
+function formatDate(value) {
+  if (!value) return "Not available";
+  const [year, month, day] = String(value).slice(0, 10).split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat("en", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+}
+
+function playerInitials(name) {
+  return String(name)
+    .split(/[\s.-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+}
+
+async function fetchJson(url, options) {
+  const response = await fetch(url, options);
+  const data = await response.json().catch(() => ({}));
+  return { response, data };
+}
+
 /* ---------- health badge ---------- */
 
 async function refreshHealth() {
@@ -155,6 +192,44 @@ function setupSurfacePicker() {
 
 /* ---------- results rendering ---------- */
 
+function hideResultFrames() {
+  for (const id of ["results-card", "player-info-card"]) {
+    const card = document.getElementById(id);
+    card.hidden = true;
+    card.classList.remove("is-visible");
+  }
+}
+
+function renderPlayerProfile(prefix, profile, surface) {
+  document.getElementById(`${prefix}-initials`).textContent = playerInitials(profile.name);
+  document.getElementById(`${prefix}-name`).textContent = profile.name;
+  document.getElementById(`${prefix}-slug`).textContent =
+    profile.slug ? `Database record · ${profile.slug}` : "Database profile";
+  document.getElementById(`${prefix}-rank`).textContent = formatRank(profile.rank);
+  document.getElementById(`${prefix}-global-elo`).textContent = formatInteger(profile.elo_global);
+  document.getElementById(`${prefix}-surface-elo-label`).textContent = `${surface} Elo`;
+  document.getElementById(`${prefix}-surface-elo`).textContent = formatInteger(profile.elo_surface);
+  document.getElementById(`${prefix}-matches`).textContent = formatInteger(profile.matches_global);
+  document.getElementById(`${prefix}-surface-matches-label`).textContent = `${surface} matches`;
+  document.getElementById(`${prefix}-surface-matches`).textContent =
+    formatInteger(profile.matches_surface);
+  document.getElementById(`${prefix}-last-match`).textContent =
+    formatDate(profile.last_match_date);
+  document.getElementById(`${prefix}-as-of`).textContent =
+    formatDate(profile.as_of || profile.last_match_date);
+}
+
+function renderPlayerInfo(data) {
+  const card = document.getElementById("player-info-card");
+  document.getElementById("player-info-surface").textContent = `${data.surface} court`;
+  renderPlayerProfile("profile-p1", data.player1, data.surface);
+  renderPlayerProfile("profile-p2", data.player2, data.surface);
+
+  card.hidden = false;
+  card.classList.remove("is-visible");
+  requestAnimationFrame(() => card.classList.add("is-visible"));
+}
+
 function renderResults(data) {
   const card = document.getElementById("results-card");
   const p1 = data.player1.name;
@@ -242,29 +317,51 @@ function setupForm(player1Field, player2Field, surfacePicker) {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     errorEl.hidden = true;
+    hideResultFrames();
     button.disabled = true;
     button.classList.add("is-loading");
     button.setAttribute("aria-busy", "true");
     buttonLabel.textContent = "Analyzing matchup";
     try {
-      const res = await fetch("/api/predict", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          player1: player1Field.value(),
-          player2: player2Field.value(),
-          surface: surfacePicker.value(),
+      const request = {
+        player1: player1Field.value(),
+        player2: player2Field.value(),
+        surface: surfacePicker.value(),
+      };
+      const profileParams = new URLSearchParams(request);
+
+      // Prediction and player profiles are independent, so neither request
+      // waits for the other before querying the backend.
+      const [predictionResult, profileResult] = await Promise.all([
+        fetchJson("/api/predict", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(request),
         }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.detail || `Request failed (${res.status})`);
+        fetchJson(`/api/players/compare?${profileParams}`).catch(() => null),
+      ]);
+
+      if (!predictionResult.response.ok) {
+        throw new Error(
+          predictionResult.data.detail ||
+          `Request failed (${predictionResult.response.status})`
+        );
       }
-      renderResults(data);
+
+      const prediction = predictionResult.data;
+      const profiles = profileResult?.response.ok
+        ? profileResult.data
+        : {
+            player1: prediction.player1,
+            player2: prediction.player2,
+            surface: prediction.surface,
+          };
+      renderResults(prediction);
+      renderPlayerInfo(profiles);
     } catch (error) {
       errorEl.textContent = error.message;
       errorEl.hidden = false;
-      document.getElementById("results-card").hidden = true;
+      hideResultFrames();
     } finally {
       button.disabled = false;
       button.classList.remove("is-loading");

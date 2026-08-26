@@ -4,38 +4,17 @@ from __future__ import annotations
 import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from ..db.database import get_session
-from ..db.models import MatchResult, Player
+from ..db.models import MatchResult
 from ..schemas import HeadToHead, ModelPrediction, PredictRequest, PredictResponse
 from ..services.feature_builder import PlayerState
 from ..services.model_runner import model_runner
-from .players import player_summary
+from .players import find_player, player_summary
 
 router = APIRouter(prefix="/api/predict", tags=["predict"])
-
-
-def _find_player(session: Session, identifier: str) -> Player:
-    """Exact match on name or slug, case-insensitive."""
-    lowered = identifier.strip().lower()
-    statement = (
-        select(Player)
-        .where(
-            (func.lower(Player.name) == lowered)
-            | (func.lower(Player.slug) == lowered)
-        )
-        .options(selectinload(Player.recent_matches))
-    )
-    player = session.scalars(statement).first()
-    if player is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Player not found in database: {identifier!r}. "
-            "Use /api/players?q= to search for the exact name.",
-        )
-    return player
 
 
 @router.post("", response_model=PredictResponse)
@@ -46,8 +25,8 @@ def predict(
     if not model_runner.is_loaded:
         raise HTTPException(status_code=503, detail="Models are not loaded.")
 
-    player1 = _find_player(session, request.player1)
-    player2 = _find_player(session, request.player2)
+    player1 = find_player(session, request.player1, include_recent_matches=True)
+    player2 = find_player(session, request.player2, include_recent_matches=True)
     if player1.id == player2.id:
         raise HTTPException(
             status_code=400, detail="player1 and player2 must be different players."

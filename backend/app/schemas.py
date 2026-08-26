@@ -20,9 +20,22 @@ class PlayerSummary(BaseModel):
     last_match_date: Optional[datetime.date] = None
 
 
+class PlayerProfile(PlayerSummary):
+    elo_surface: float
+    matches_global: int
+    matches_surface: int
+    as_of: Optional[datetime.date] = None
+
+
 class PlayerSearchResponse(BaseModel):
     query: str
     players: List[PlayerSummary]
+
+
+class PlayerComparisonResponse(BaseModel):
+    player1: PlayerProfile
+    player2: PlayerProfile
+    surface: Literal["Hard", "Clay", "Grass"]
 
 
 class PredictRequest(BaseModel):
