@@ -39,9 +39,9 @@ body {
   min-height: 100vh;
   padding: clamp(32px, 4.4vw, 64px);
   overflow-x: hidden;
-  background: #eeedf1;
+  background: #0c1726;
   color: var(--ink);
-  font-family: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: "Michroma", "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -50,12 +50,22 @@ body {
 .page-background {
   position: fixed;
   z-index: -1;
-  inset: -45px;
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.58), rgba(252, 251, 253, 0.72)),
-    url("dashboard-bg.png") center / cover no-repeat;
-  filter: blur(12px) saturate(0.88);
-  transform: scale(1.14);
+  inset: -6vmax;
+  background-color: #0c1726;
+  background-image: url("us-open-background.png");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  filter: brightness(0.5) saturate(0.78) contrast(1.06);
+  transform: scale(1.06) translate3d(-0.6%, -0.4%, 0);
+}
+
+.page-background::after {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 10, 20, 0.22);
+  content: "";
+  pointer-events: none;
 }
 
 button,
@@ -88,15 +98,20 @@ a {
 }
 
 .app-shell {
+  position: relative;
   width: min(100%, 1340px);
   margin: 0 auto;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.76);
+  border: 1px solid rgba(255, 255, 255, 0.44);
   border-radius: var(--radius-shell);
-  background: rgba(247, 248, 248, 0.8);
-  box-shadow: var(--shadow-xl);
-  backdrop-filter: blur(28px) saturate(0.85);
-  -webkit-backdrop-filter: blur(28px) saturate(0.85);
+  background: rgba(242, 247, 251, 0.58);
+  box-shadow:
+    0 30px 90px rgba(3, 9, 20, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.58),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(34px) saturate(1.32);
+  -webkit-backdrop-filter: blur(34px) saturate(1.32);
+  transition: width 380ms cubic-bezier(0.22, 0.75, 0.25, 1);
 }
 
 .topbar {
@@ -105,8 +120,11 @@ a {
   justify-content: space-between;
   min-height: 76px;
   padding: 0 30px;
-  border-bottom: 1px solid var(--line);
-  background: rgba(252, 252, 251, 0.66);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(248, 251, 253, 0.44);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.34);
+  backdrop-filter: blur(22px) saturate(1.2);
+  -webkit-backdrop-filter: blur(22px) saturate(1.2);
 }
 
 .brand {
@@ -116,8 +134,8 @@ a {
 }
 
 .brand strong {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 17px;
+  font-weight: 400;
   letter-spacing: 0.03em;
   text-transform: uppercase;
 }
@@ -1466,7 +1484,7 @@ input:focus-visible {
   }
 
   .page-background {
-    filter: blur(10px) saturate(0.7);
+    filter: brightness(0.47) saturate(0.76) contrast(1.05);
   }
 
   .app-shell {
@@ -1940,9 +1958,12 @@ input:focus-visible {
   display: inline-flex;
   gap: 2px;
   padding: 3px;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 11px;
-  background: rgba(228, 230, 227, 0.66);
+  background: rgba(238, 245, 250, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
 }
 
 .tab {
@@ -1972,13 +1993,40 @@ body[data-tab="backtest"] #panel-predict { display: none; }
 body[data-predict-state="compose"] #predict-result,
 body[data-predict-state="result"] #predict-compose { display: none; }
 
+body[data-tab="predict"][data-predict-state="compose"] {
+  display: grid;
+  align-content: center;
+}
+
+body[data-tab="predict"][data-predict-state="compose"] .app-shell {
+  width: min(100%, 960px);
+  height: auto;
+}
+
+body[data-tab="predict"][data-predict-state="compose"] main {
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+body[data-tab="predict"][data-predict-state="compose"] #panel-predict,
+body[data-tab="predict"][data-predict-state="compose"] #predict-compose {
+  height: auto;
+}
+
 .bento {
   display: grid;
   gap: 14px;
   padding: 14px;
 }
 
-.bento-compose { grid-template-columns: 5fr 7fr; }
+.bento-compose {
+  grid-template-columns: 1fr;
+  grid-template-rows: auto;
+}
+
+.bento-compose > .tile-form {
+  grid-area: 1 / 1;
+}
 
 .bento-result {
   grid-template-columns: repeat(12, 1fr);
@@ -2004,10 +2052,14 @@ body[data-predict-state="result"] #predict-compose { display: none; }
   min-height: 0;          /* lets inner scroll areas shrink inside the grid */
   overflow: hidden;
   padding: 18px 20px;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(255, 255, 255, 0.38);
   border-radius: var(--radius-xl);
-  background: rgba(255, 255, 255, 0.62);
-  box-shadow: var(--shadow-md);
+  background: rgba(245, 249, 252, 0.34);
+  box-shadow:
+    0 18px 42px rgba(4, 10, 22, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.52);
+  backdrop-filter: blur(22px) saturate(1.24);
+  -webkit-backdrop-filter: blur(22px) saturate(1.24);
 }
 
 .tile-head {
@@ -2049,24 +2101,54 @@ body[data-predict-state="result"] #predict-compose { display: none; }
 }
 .ghost-button:hover { background: #fff; transform: translateY(-1px); }
 
-/* Arena image tile */
-.tile-arena {
-  position: relative;
-  padding: 0;
-  background: #15203a;
+.bento-compose > .tile-form {
+  z-index: 1;
+  align-self: center;
+  justify-self: center;
+  width: min(880px, calc(100% - clamp(28px, 7vw, 96px)));
+  padding: clamp(24px, 3.2vw, 38px);
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
-.tile-arena img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  filter: saturate(0.86) contrast(1.02);
-  transition: transform 800ms cubic-bezier(0.2, 0.75, 0.25, 1);
-}
-.tile-arena:hover img { transform: scale(1.03); }
 
-/* Head pinned top, summary pinned bottom, controls optically centred between. */
+.bento-compose .tile-head h2 {
+  font-size: 18px;
+}
+
+.bento-compose .eyebrow,
+.bento-compose .model-pill {
+  font-size: 10px;
+}
+
+.bento-compose .eyebrow {
+  color: #30363c;
+}
+
+.bento-compose .field label,
+.bento-compose .surface-field legend {
+  font-size: 13px;
+}
+
+.bento-compose .segment,
+.bento-compose .predict-button {
+  font-size: 11px;
+}
+
+.bento-compose .field label small,
+.bento-compose .surface-field legend small,
+.bento-compose .vs {
+  font-size: 9px;
+}
+
+.bento-compose input[type="text"] {
+  font-size: 13px;
+}
+
+/* Keep the matchup controls optically centred in the tile. */
 .tile-form #predict-form {
   flex: 1;
   display: flex;
@@ -2074,7 +2156,6 @@ body[data-predict-state="result"] #predict-compose { display: none; }
   justify-content: center;
   gap: 18px;
 }
-.tile-form .input-summary { margin-top: auto; }
 
 /* Forecast tile fills its height so the bar sits optically centred. */
 .tile-forecast .mean-result { flex: 1; display: flex; flex-direction: column; justify-content: center; }
@@ -2109,7 +2190,14 @@ body[data-predict-state="result"] #predict-compose { display: none; }
 @media (max-width: 999px), (max-height: 679px) {
   .bento { grid-template-columns: 1fr; grid-template-rows: none; }
   .bento > .tile { grid-column: auto; }
-  .tile-arena { min-height: 220px; }
+  .bento-compose { grid-template-rows: auto; }
+  .bento-compose > .tile-form { grid-area: 1 / 1; }
   .tile-bt-chart .equity-figure { min-height: 220px; }
   .tabs { order: 3; width: 100%; justify-content: center; }
+}
+
+@media (max-height: 560px) {
+  body[data-tab="predict"][data-predict-state="compose"] {
+    align-content: start;
+  }
 }

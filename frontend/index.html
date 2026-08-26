@@ -8,7 +8,7 @@
   <title>Tennis Live — Match Intelligence</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Michroma&family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body data-tab="predict" data-predict-state="compose">
@@ -43,15 +43,6 @@
 
         <!-- compose state: pick a matchup -->
         <div class="bento bento-compose" id="predict-compose">
-          <div class="tile tile-arena">
-            <img src="arena-hero.png" alt="A packed indoor tennis arena viewed from above" fetchpriority="high" decoding="async">
-            <div class="arena-shade" aria-hidden="true"></div>
-            <div class="arena-caption">
-              <span>Model environment</span>
-              <strong>Pre-match · Surface weighted</strong>
-            </div>
-          </div>
-
           <div class="tile tile-form">
             <div class="tile-head">
               <div>
@@ -103,21 +94,6 @@
               </div>
               <p class="error" id="predict-error" hidden></p>
             </form>
-
-            <dl class="input-summary">
-              <div>
-                <dt>Ratings</dt>
-                <dd>Global + surface Elo</dd>
-              </div>
-              <div>
-                <dt>Form</dt>
-                <dd>Recency + workload</dd>
-              </div>
-              <div>
-                <dt>Context</dt>
-                <dd>Rank + head-to-head</dd>
-              </div>
-            </dl>
           </div>
         </div>
 
