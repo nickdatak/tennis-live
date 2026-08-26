@@ -15,9 +15,9 @@ from ..db.models import BacktestMatch, BacktestModelResult, BacktestPrediction, 
 from ..schemas import (
     BacktestModelScore,
     BacktestSummary,
-    BacktestSurfaceBreakdown,
     EquityPoint,
-    ModelBreakdownResponse,
+    EquityResponse,
+    EquitySeries,
 )
 
 router = APIRouter(prefix="/api/backtest", tags=["backtest"])
@@ -73,81 +73,87 @@ def backtest_summary(session: Session = Depends(get_session)) -> BacktestSummary
     )
 
 
-@router.get("/model", response_model=ModelBreakdownResponse)
-def model_breakdown(
-    model: str = Query(..., min_length=1, max_length=64),
+@router.get("/equity", response_model=EquityResponse)
+def equity_curves(
+    surface: str = Query("All", max_length=20),
     session: Session = Depends(get_session),
-) -> ModelBreakdownResponse:
-    """Per-surface betting results and the cumulative profit curve for one model."""
+) -> EquityResponse:
+    """Running-ROI curve for every model, optionally restricted to one surface.
+
+    All models are returned in a single response so the dashboard can toggle
+    which ones are overlaid without another request.
+    """
     run = _latest_run(session)
-    exists = session.scalar(
-        select(func.count(BacktestModelResult.id)).where(
-            BacktestModelResult.run_id == run.id, BacktestModelResult.model == model
+
+    if surface != "All":
+        available = set(
+            session.scalars(
+                select(BacktestMatch.surface)
+                .where(BacktestMatch.run_id == run.id)
+                .distinct()
+            ).all()
         )
-    )
-    if not exists:
-        raise HTTPException(status_code=404, detail=f"No results for model {model!r}.")
+        if surface not in available:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Unknown surface {surface!r}. Available: All, "
+                + ", ".join(sorted(s for s in available if s)),
+            )
 
     placed = BacktestPrediction.bet_side.is_not(None)
     won = BacktestPrediction.bet_profit > 0
 
-    surface_rows = session.execute(
+    # One row per model per day; the running totals are accumulated below so
+    # the SQL stays simple and portable.
+    statement = (
         select(
-            BacktestMatch.surface,
-            func.count(BacktestPrediction.id),
-            func.sum(case((won, 1), else_=0)),
-            func.sum(BacktestPrediction.bet_profit),
-        )
-        .join(BacktestMatch, BacktestPrediction.match_id == BacktestMatch.id)
-        .where(
-            BacktestPrediction.run_id == run.id,
-            BacktestPrediction.model == model,
-            placed,
-        )
-        .group_by(BacktestMatch.surface)
-        .order_by(BacktestMatch.surface)
-    ).all()
-
-    surfaces = [
-        BacktestSurfaceBreakdown(
-            surface=surface or "Unknown",
-            n_bets=int(n_bets),
-            n_wins=int(n_wins or 0),
-            profit=float(profit or 0.0),
-            roi=float(profit or 0.0) / (int(n_bets) * run.stake) if n_bets else None,
-        )
-        for surface, n_bets, n_wins, profit in surface_rows
-    ]
-
-    # Daily profit, accumulated in Python to keep the SQL portable.
-    daily_rows = session.execute(
-        select(
+            BacktestPrediction.model,
             BacktestMatch.match_date,
             func.sum(BacktestPrediction.bet_profit),
             func.count(BacktestPrediction.id),
+            func.sum(case((won, 1), else_=0)),
         )
         .join(BacktestMatch, BacktestPrediction.match_id == BacktestMatch.id)
-        .where(
-            BacktestPrediction.run_id == run.id,
-            BacktestPrediction.model == model,
-            placed,
-        )
-        .group_by(BacktestMatch.match_date)
-        .order_by(BacktestMatch.match_date)
-    ).all()
+        .where(BacktestPrediction.run_id == run.id, placed)
+        .group_by(BacktestPrediction.model, BacktestMatch.match_date)
+        .order_by(BacktestPrediction.model, BacktestMatch.match_date)
+    )
+    if surface != "All":
+        statement = statement.where(BacktestMatch.surface == surface)
 
-    equity, running_profit, running_bets = [], 0.0, 0
-    for match_date, profit, n_bets in daily_rows:
-        running_profit += float(profit or 0.0)
-        running_bets += int(n_bets)
-        equity.append(
-            EquityPoint(
-                date=match_date,
-                cumulative_profit=round(running_profit, 4),
-                cumulative_bets=running_bets,
+    by_model: dict[str, list] = {}
+    for model, match_date, profit, n_bets, n_wins in session.execute(statement).all():
+        by_model.setdefault(model, []).append(
+            (match_date, float(profit or 0.0), int(n_bets), int(n_wins or 0))
+        )
+
+    series = []
+    for model, rows in by_model.items():
+        points, running_profit, running_bets, running_wins = [], 0.0, 0, 0
+        for match_date, profit, n_bets, n_wins in rows:
+            running_profit += profit
+            running_bets += n_bets
+            running_wins += n_wins
+            points.append(
+                EquityPoint(
+                    date=match_date,
+                    cumulative_profit=round(running_profit, 4),
+                    cumulative_bets=running_bets,
+                    roi=running_profit / (running_bets * run.stake),
+                )
+            )
+        series.append(
+            EquitySeries(
+                model=model,
+                n_bets=running_bets,
+                n_wins=running_wins,
+                profit=round(running_profit, 4),
+                roi=running_profit / (running_bets * run.stake) if running_bets else None,
+                points=points,
             )
         )
 
-    return ModelBreakdownResponse(
-        run_id=run.id, model=model, stake=run.stake, surfaces=surfaces, equity=equity
+    series.sort(key=lambda item: item.roi if item.roi is not None else -9e9, reverse=True)
+    return EquityResponse(
+        run_id=run.id, surface=surface, stake=run.stake, series=series
     )

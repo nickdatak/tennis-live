@@ -93,26 +93,27 @@ class BacktestSummary(BaseModel):
     models: List[BacktestModelScore]
 
 
-class BacktestSurfaceBreakdown(BaseModel):
-    surface: str
-    n_bets: int
-    n_wins: int
-    profit: float
-    roi: Optional[float] = None
-
-
 class EquityPoint(BaseModel):
     date: datetime.date
     cumulative_profit: float
     cumulative_bets: int
+    roi: float  # running return on stake so far, comparable across models
 
 
-class ModelBreakdownResponse(BaseModel):
-    run_id: int
+class EquitySeries(BaseModel):
     model: str
+    n_bets: int
+    n_wins: int
+    profit: float
+    roi: Optional[float] = None
+    points: List[EquityPoint]
+
+
+class EquityResponse(BaseModel):
+    run_id: int
+    surface: str  # "All" or a single surface
     stake: float
-    surfaces: List[BacktestSurfaceBreakdown]
-    equity: List[EquityPoint]
+    series: List[EquitySeries]
 
 
 class HealthResponse(BaseModel):

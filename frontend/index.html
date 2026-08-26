@@ -312,15 +312,15 @@
         <div class="table-scroll">
           <table class="model-table backtest-table">
             <thead>
-              <tr>
-                <th>Model</th>
-                <th class="num">Brier</th>
-                <th class="num">Log loss</th>
-                <th class="num">Accuracy</th>
-                <th class="num">Bets</th>
-                <th class="num">Hit rate</th>
-                <th class="num">Profit</th>
-                <th class="num">ROI</th>
+              <tr id="backtest-head">
+                <th class="sortable" data-key="model" data-dir="asc">Model</th>
+                <th class="num sortable" data-key="brier" data-dir="asc">Brier</th>
+                <th class="num sortable" data-key="log_loss" data-dir="asc">Log loss</th>
+                <th class="num sortable" data-key="accuracy" data-dir="desc">Accuracy</th>
+                <th class="num sortable" data-key="n_bets" data-dir="desc">Bets</th>
+                <th class="num sortable" data-key="hit_rate" data-dir="desc">Hit rate</th>
+                <th class="num sortable" data-key="profit" data-dir="desc">Profit</th>
+                <th class="num sortable" data-key="roi" data-dir="desc">ROI</th>
               </tr>
             </thead>
             <tbody id="backtest-rows"></tbody>
@@ -330,29 +330,23 @@
         <div class="backtest-detail">
           <div class="backtest-detail-head">
             <div>
-              <strong>Per-surface betting result</strong>
-              <small id="backtest-detail-model"></small>
+              <strong>Cumulative ROI</strong>
+              <small>Running return on stake — click a model to show or hide it</small>
             </div>
-            <div class="segmented" id="backtest-model-picker" role="radiogroup" aria-label="Backtest model"></div>
+            <div class="segmented" id="backtest-surface-picker" role="radiogroup" aria-label="Surface scope">
+              <button type="button" class="segment selected" data-surface="All" role="radio" aria-checked="true">Total</button>
+              <button type="button" class="segment" data-surface="Hard" role="radio" aria-checked="false">Hard</button>
+              <button type="button" class="segment" data-surface="Clay" role="radio" aria-checked="false">Clay</button>
+              <button type="button" class="segment" data-surface="Grass" role="radio" aria-checked="false">Grass</button>
+            </div>
           </div>
-          <div class="table-scroll">
-            <table class="model-table">
-              <thead>
-                <tr>
-                  <th>Surface</th>
-                  <th class="num">Bets</th>
-                  <th class="num">Wins</th>
-                  <th class="num">Profit</th>
-                  <th class="num">ROI</th>
-                </tr>
-              </thead>
-              <tbody id="backtest-surface-rows"></tbody>
-            </table>
-          </div>
+
+          <div class="equity-legend" id="equity-legend"></div>
+
           <figure class="equity-figure">
+            <svg id="equity-chart" viewBox="0 0 720 250" preserveAspectRatio="xMidYMid meet"
+                 role="img" aria-label="Cumulative return on stake for each model"></svg>
             <figcaption id="equity-caption"></figcaption>
-            <svg id="equity-chart" viewBox="0 0 720 200" preserveAspectRatio="none" role="img"
-                 aria-label="Cumulative profit over the backtest period"></svg>
           </figure>
         </div>
 

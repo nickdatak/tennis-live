@@ -441,6 +441,24 @@ function setupRefreshButton() {
 
 // Read-only: these numbers are precomputed by backend/scripts/run_backtest.py
 // and simply queried here. Nothing is scored in the browser or the API.
+const MODEL_COLOURS = [
+  "#1f385e", "#b84a43", "#4b6f40", "#b5852a", "#6b4c7a", "#2b7a8c",
+];
+// Running ROI over a small number of bets swings wildly (a single early loss
+// is -100%), which would compress the meaningful range into a sliver. Curves
+// therefore start once a model has placed this many bets.
+const MIN_BETS_FOR_CURVE = 100;
+
+const backtestState = {
+  models: [],                 // summary rows, as returned by the API
+  sortKey: "brier",
+  sortDir: "asc",
+  surface: "All",
+  series: [],                 // equity series for the current surface
+  hidden: new Set(),          // models the user has toggled off
+  colours: new Map(),         // model -> colour, stable across surfaces
+};
+
 function formatMoney(value) {
   const sign = value < 0 ? "−" : "+";
   return `${sign}$${Math.abs(value).toFixed(2)}`;
@@ -451,102 +469,41 @@ function formatSignedPct(value) {
   return `${value < 0 ? "−" : "+"}${Math.abs(value * 100).toFixed(2)}%`;
 }
 
-function renderEquityChart(points) {
-  const svg = document.getElementById("equity-chart");
-  svg.innerHTML = "";
-  if (!points.length) return;
+/* --- sortable summary table --- */
 
-  const width = 720;
-  const height = 200;
-  const pad = 8;
-  const profits = points.map((p) => p.cumulative_profit);
-  const min = Math.min(0, ...profits);
-  const max = Math.max(0, ...profits);
-  const span = max - min || 1;
-  const x = (i) => pad + (i / Math.max(points.length - 1, 1)) * (width - pad * 2);
-  const y = (v) => pad + (1 - (v - min) / span) * (height - pad * 2);
-
-  const ns = "http://www.w3.org/2000/svg";
-  const zero = document.createElementNS(ns, "line");
-  zero.setAttribute("x1", pad);
-  zero.setAttribute("x2", width - pad);
-  zero.setAttribute("y1", y(0));
-  zero.setAttribute("y2", y(0));
-  zero.setAttribute("class", "equity-zero");
-  svg.appendChild(zero);
-
-  const d = points.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.cumulative_profit).toFixed(1)}`).join(" ");
-
-  const area = document.createElementNS(ns, "path");
-  area.setAttribute("d", `${d} L${x(points.length - 1).toFixed(1)},${y(0).toFixed(1)} L${x(0).toFixed(1)},${y(0).toFixed(1)} Z`);
-  area.setAttribute("class", "equity-area");
-  svg.appendChild(area);
-
-  const line = document.createElementNS(ns, "path");
-  line.setAttribute("d", d);
-  line.setAttribute("class", "equity-line");
-  svg.appendChild(line);
+function sortValue(row, key) {
+  if (key === "hit_rate") return row.n_bets ? row.n_bet_wins / row.n_bets : null;
+  if (key === "model") return row.model.toLowerCase();
+  const value = row[key];
+  // Betting columns are empty for the benchmark row; keep those rows last.
+  if ((key === "n_bets" || key === "profit" || key === "roi") && !row.n_bets) return null;
+  return value == null ? null : value;
 }
 
-async function loadBacktestModel(model) {
-  document.getElementById("backtest-detail-model").textContent = model;
-  const picker = document.getElementById("backtest-model-picker");
-  picker.querySelectorAll(".segment").forEach((button) => {
-    const active = button.dataset.model === model;
-    button.classList.toggle("selected", active);
-    button.setAttribute("aria-checked", String(active));
+function renderBacktestTable() {
+  const tbody = document.getElementById("backtest-rows");
+  const { sortKey, sortDir } = backtestState;
+  const direction = sortDir === "asc" ? 1 : -1;
+
+  const rows = [...backtestState.models].sort((a, b) => {
+    const left = sortValue(a, sortKey);
+    const right = sortValue(b, sortKey);
+    if (left == null && right == null) return 0;
+    if (left == null) return 1;   // nulls always last
+    if (right == null) return -1;
+    if (left < right) return -1 * direction;
+    if (left > right) return 1 * direction;
+    return 0;
   });
 
-  const { response, data } = await fetchJson(
-    `/api/backtest/model?model=${encodeURIComponent(model)}`
-  );
-  if (!response.ok) return;
+  document.querySelectorAll("#backtest-head .sortable").forEach((th) => {
+    const active = th.dataset.key === sortKey;
+    th.classList.toggle("sorted", active);
+    th.setAttribute("aria-sort", active ? (sortDir === "asc" ? "ascending" : "descending") : "none");
+  });
 
-  const tbody = document.getElementById("backtest-surface-rows");
   tbody.innerHTML = "";
-  for (const row of data.surfaces) {
-    const tr = document.createElement("tr");
-    const cells = [
-      row.surface,
-      formatInteger(row.n_bets),
-      formatInteger(row.n_wins),
-      formatMoney(row.profit),
-      formatSignedPct(row.roi),
-    ];
-    cells.forEach((text, index) => {
-      const td = document.createElement("td");
-      td.textContent = text;
-      if (index > 0) td.className = "num";
-      if (index >= 3) td.classList.add(row.profit < 0 ? "negative" : "positive");
-      tr.appendChild(td);
-    });
-    tbody.appendChild(tr);
-  }
-
-  const last = data.equity[data.equity.length - 1];
-  document.getElementById("equity-caption").textContent = last
-    ? `Cumulative profit across ${formatInteger(last.cumulative_bets)} bets · ending ${formatMoney(last.cumulative_profit)}`
-    : "No bets placed.";
-  renderEquityChart(data.equity);
-}
-
-async function loadBacktest() {
-  const card = document.getElementById("backtest-card");
-  const { response, data } = await fetchJson("/api/backtest");
-  if (!response.ok) return; // no stored backtest: leave the section hidden
-
-  document.getElementById("backtest-computed").textContent = formatDate(data.dataset_end);
-  document.getElementById("backtest-intro").textContent =
-    `${formatInteger(data.n_matches)} matches from ${formatDate(data.dataset_start)} to ` +
-    `${formatDate(data.dataset_end)}, scored by models trained only through ` +
-    `${formatDate(data.trained_through)}. Flat $${data.stake.toFixed(0)} stake per bet.`;
-
-  const tbody = document.getElementById("backtest-rows");
-  const picker = document.getElementById("backtest-model-picker");
-  tbody.innerHTML = "";
-  picker.innerHTML = "";
-
-  for (const row of data.models) {
+  for (const row of rows) {
     const tr = document.createElement("tr");
     if (row.is_benchmark) tr.className = "benchmark-row";
     const hit = row.n_bets ? formatPct(row.n_bet_wins / row.n_bets) : "—";
@@ -568,23 +525,199 @@ async function loadBacktest() {
       tr.appendChild(td);
     });
     tbody.appendChild(tr);
+  }
+}
 
-    if (!row.is_benchmark) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "segment";
-      button.dataset.model = row.model;
-      button.setAttribute("role", "radio");
-      button.setAttribute("aria-checked", "false");
-      button.textContent = row.model;
-      button.addEventListener("click", () => loadBacktestModel(row.model));
-      picker.appendChild(button);
+function setupBacktestSorting() {
+  document.getElementById("backtest-head").addEventListener("click", (event) => {
+    const th = event.target.closest(".sortable");
+    if (!th) return;
+    const key = th.dataset.key;
+    if (backtestState.sortKey === key) {
+      backtestState.sortDir = backtestState.sortDir === "asc" ? "desc" : "asc";
+    } else {
+      backtestState.sortKey = key;
+      backtestState.sortDir = th.dataset.dir || "asc"; // sensible default per column
     }
+    renderBacktestTable();
+  });
+}
+
+/* --- overlaid ROI curves --- */
+
+function visibleSeries() {
+  return backtestState.series.filter((s) => !backtestState.hidden.has(s.model));
+}
+
+function renderEquityLegend() {
+  const legend = document.getElementById("equity-legend");
+  legend.innerHTML = "";
+  for (const item of backtestState.series) {
+    const hidden = backtestState.hidden.has(item.model);
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = `legend-chip${hidden ? " is-off" : ""}`;
+    chip.setAttribute("aria-pressed", String(!hidden));
+
+    const swatch = document.createElement("span");
+    swatch.className = "legend-swatch";
+    swatch.style.background = backtestState.colours.get(item.model);
+
+    const name = document.createElement("span");
+    name.className = "legend-name";
+    name.textContent = item.model;
+
+    const value = document.createElement("span");
+    value.className = `legend-value ${item.roi < 0 ? "negative" : "positive"}`;
+    value.textContent = `${formatSignedPct(item.roi)} · ${formatInteger(item.n_bets)} bets`;
+
+    chip.append(swatch, name, value);
+    chip.addEventListener("click", () => {
+      if (hidden) backtestState.hidden.delete(item.model);
+      else backtestState.hidden.add(item.model);
+      renderEquityLegend();
+      renderEquityChart();
+    });
+    legend.appendChild(chip);
+  }
+}
+
+function renderEquityChart() {
+  const svg = document.getElementById("equity-chart");
+  const caption = document.getElementById("equity-caption");
+  const ns = "http://www.w3.org/2000/svg";
+  svg.innerHTML = "";
+
+  const series = visibleSeries()
+    .map((s) => ({ ...s, points: s.points.filter((p) => p.cumulative_bets >= MIN_BETS_FOR_CURVE) }))
+    .filter((s) => s.points.length > 1);
+
+  if (!series.length) {
+    caption.textContent = "No models selected.";
+    return;
   }
 
+  const width = 720;
+  const height = 250;
+  const padLeft = 46;
+  const padRight = 12;
+  const padTop = 14;
+  const padBottom = 26;
+
+  const times = series.flatMap((s) => s.points.map((p) => Date.parse(p.date)));
+  const rois = series.flatMap((s) => s.points.map((p) => p.roi));
+  const tMin = Math.min(...times);
+  const tMax = Math.max(...times);
+  let yMin = Math.min(0, ...rois);
+  let yMax = Math.max(0, ...rois);
+  const headroom = (yMax - yMin) * 0.08 || 0.01;
+  yMin -= headroom;
+  yMax += headroom;
+
+  const x = (t) => padLeft + ((t - tMin) / (tMax - tMin || 1)) * (width - padLeft - padRight);
+  const y = (v) => padTop + (1 - (v - yMin) / (yMax - yMin || 1)) * (height - padTop - padBottom);
+
+  const addLine = (x1, y1, x2, y2, cls) => {
+    const line = document.createElementNS(ns, "line");
+    line.setAttribute("x1", x1); line.setAttribute("y1", y1);
+    line.setAttribute("x2", x2); line.setAttribute("y2", y2);
+    line.setAttribute("class", cls);
+    svg.appendChild(line);
+  };
+  const addText = (tx, ty, text, cls, anchor = "start") => {
+    const node = document.createElementNS(ns, "text");
+    node.setAttribute("x", tx); node.setAttribute("y", ty);
+    node.setAttribute("class", cls); node.setAttribute("text-anchor", anchor);
+    node.textContent = text;
+    svg.appendChild(node);
+  };
+
+  // Horizontal gridlines with ROI labels, plus a solid break-even line.
+  const ticks = 4;
+  for (let i = 0; i <= ticks; i += 1) {
+    const value = yMin + ((yMax - yMin) * i) / ticks;
+    const ty = y(value);
+    addLine(padLeft, ty, width - padRight, ty, "equity-grid");
+    addText(padLeft - 6, ty + 3, `${(value * 100).toFixed(1)}%`, "equity-axis", "end");
+  }
+  if (yMin < 0 && yMax > 0) {
+    addLine(padLeft, y(0), width - padRight, y(0), "equity-zero");
+  }
+
+  const dateLabel = (t) =>
+    new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(new Date(t));
+  addText(padLeft, height - 8, dateLabel(tMin), "equity-axis");
+  addText(width - padRight, height - 8, dateLabel(tMax), "equity-axis", "end");
+
+  for (const item of series) {
+    const path = document.createElementNS(ns, "path");
+    path.setAttribute(
+      "d",
+      item.points
+        .map((p, i) => `${i ? "L" : "M"}${x(Date.parse(p.date)).toFixed(1)},${y(p.roi).toFixed(1)}`)
+        .join(" ")
+    );
+    path.setAttribute("class", "equity-line");
+    path.setAttribute("stroke", backtestState.colours.get(item.model));
+    svg.appendChild(path);
+  }
+
+  const scope = backtestState.surface === "All" ? "all surfaces" : `${backtestState.surface} courts`;
+  const totalBets = series.reduce((sum, s) => sum + s.n_bets, 0);
+  caption.textContent =
+    `${series.length} model${series.length === 1 ? "" : "s"} on ${scope} · ` +
+    `${formatInteger(totalBets)} bets total · curves begin at each model's ${MIN_BETS_FOR_CURVE}th bet`;
+}
+
+async function loadEquity(surface) {
+  backtestState.surface = surface;
+  const picker = document.getElementById("backtest-surface-picker");
+  picker.querySelectorAll(".segment").forEach((button) => {
+    const active = button.dataset.surface === surface;
+    button.classList.toggle("selected", active);
+    button.setAttribute("aria-checked", String(active));
+  });
+
+  const { response, data } = await fetchJson(
+    `/api/backtest/equity?surface=${encodeURIComponent(surface)}`
+  );
+  if (!response.ok) return;
+
+  backtestState.series = data.series;
+  renderEquityLegend();
+  renderEquityChart();
+}
+
+function setupSurfaceScope() {
+  document.getElementById("backtest-surface-picker").addEventListener("click", (event) => {
+    const button = event.target.closest(".segment");
+    if (button) loadEquity(button.dataset.surface);
+  });
+}
+
+async function loadBacktest() {
+  const card = document.getElementById("backtest-card");
+  const { response, data } = await fetchJson("/api/backtest");
+  if (!response.ok) return; // no stored backtest: leave the section hidden
+
+  backtestState.models = data.models;
+  // Colours are assigned once, by the API's default ordering, so a model keeps
+  // the same colour when the surface scope or table sort changes.
+  data.models
+    .filter((row) => !row.is_benchmark)
+    .forEach((row, index) => {
+      backtestState.colours.set(row.model, MODEL_COLOURS[index % MODEL_COLOURS.length]);
+    });
+
+  document.getElementById("backtest-computed").textContent = formatDate(data.dataset_end);
+  document.getElementById("backtest-intro").textContent =
+    `${formatInteger(data.n_matches)} matches from ${formatDate(data.dataset_start)} to ` +
+    `${formatDate(data.dataset_end)}, scored by models trained only through ` +
+    `${formatDate(data.trained_through)}. Flat $${data.stake.toFixed(0)} stake per bet.`;
+
+  renderBacktestTable();
   card.hidden = false;
-  const best = data.models.find((row) => !row.is_benchmark);
-  if (best) await loadBacktestModel(best.model);
+  await loadEquity("All");
 }
 
 /* ---------- init ---------- */
@@ -597,5 +730,7 @@ setupRefreshButton();
 refreshHealth();
 refreshLastStatus();
 ensurePlayerCache();
+setupBacktestSorting();
+setupSurfaceScope();
 loadBacktest();
 setInterval(refreshHealth, 30_000);
