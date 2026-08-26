@@ -42,6 +42,14 @@ function formatDate(value) {
   }).format(date);
 }
 
+function formatDateCompact(value) {
+  if (!value) return "—";
+  const [year, month, day] = String(value).slice(0, 10).split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat("en", { day: "numeric", month: "short", year: "2-digit" }).format(date);
+}
+
 function playerInitials(name) {
   return String(name)
     .split(/[\s.-]+/)
@@ -192,12 +200,35 @@ function setupSurfacePicker() {
 
 /* ---------- results rendering ---------- */
 
-function hideResultFrames() {
-  for (const id of ["results-card", "player-info-card"]) {
-    const card = document.getElementById(id);
-    card.hidden = true;
-    card.classList.remove("is-visible");
-  }
+// The prediction tab has two layouts: "compose" (the matchup form) and
+// "result" (the output bento). Switching is driven by an attribute on <body>
+// so the CSS owns the visibility rules.
+function setPredictState(state) {
+  document.body.dataset.predictState = state;
+}
+
+function setupTabs() {
+  document.getElementById("tabs").addEventListener("click", (event) => {
+    const tab = event.target.closest(".tab");
+    if (!tab) return;
+    document.body.dataset.tab = tab.dataset.tab;
+    document.querySelectorAll("#tabs .tab").forEach((button) => {
+      const active = button === tab;
+      button.classList.toggle("selected", active);
+      button.setAttribute("aria-selected", String(active));
+    });
+    // The chart is pixel-sized to its tile, which has no size while its tab is
+    // hidden. Redrawing synchronously here works because reading the element's
+    // box forces the pending layout, so no timing guesswork is needed.
+    if (tab.dataset.tab === "backtest" && backtestState.series.length) {
+      renderEquityChart();
+    }
+  });
+
+  document.getElementById("new-prediction").addEventListener("click", () => {
+    setPredictState("compose");
+    document.getElementById("player1-input").focus();
+  });
 }
 
 function renderPlayerProfile(prefix, profile, surface) {
@@ -214,24 +245,18 @@ function renderPlayerProfile(prefix, profile, surface) {
   document.getElementById(`${prefix}-surface-matches`).textContent =
     formatInteger(profile.matches_surface);
   document.getElementById(`${prefix}-last-match`).textContent =
-    formatDate(profile.last_match_date);
+    formatDateCompact(profile.last_match_date);
   document.getElementById(`${prefix}-as-of`).textContent =
     formatDate(profile.as_of || profile.last_match_date);
 }
 
 function renderPlayerInfo(data) {
-  const card = document.getElementById("player-info-card");
   document.getElementById("player-info-surface").textContent = `${data.surface} court`;
   renderPlayerProfile("profile-p1", data.player1, data.surface);
   renderPlayerProfile("profile-p2", data.player2, data.surface);
-
-  card.hidden = false;
-  card.classList.remove("is-visible");
-  requestAnimationFrame(() => card.classList.add("is-visible"));
 }
 
 function renderResults(data) {
-  const card = document.getElementById("results-card");
   const p1 = data.player1.name;
   const p2 = data.player2.name;
   const meanP1 = data.mean_player1_win_probability;
@@ -300,10 +325,7 @@ function renderResults(data) {
     featureRows.appendChild(tr);
   }
 
-  card.hidden = false;
-  card.classList.remove("is-visible");
-  requestAnimationFrame(() => card.classList.add("is-visible"));
-  card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  setPredictState("result");
 }
 
 /* ---------- form submission ---------- */
@@ -317,7 +339,6 @@ function setupForm(player1Field, player2Field, surfacePicker) {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     errorEl.hidden = true;
-    hideResultFrames();
     button.disabled = true;
     button.classList.add("is-loading");
     button.setAttribute("aria-busy", "true");
@@ -361,7 +382,7 @@ function setupForm(player1Field, player2Field, surfacePicker) {
     } catch (error) {
       errorEl.textContent = error.message;
       errorEl.hidden = false;
-      hideResultFrames();
+      setPredictState("compose");
     } finally {
       button.disabled = false;
       button.classList.remove("is-loading");
@@ -597,8 +618,13 @@ function renderEquityChart() {
     return;
   }
 
-  const width = 720;
-  const height = 250;
+  // The tile is a flexible grid cell, so the drawing surface is measured and
+  // the viewBox set 1:1 with it. Using a fixed viewBox with
+  // preserveAspectRatio="none" would stretch the axis labels.
+  const rect = svg.getBoundingClientRect();
+  const width = Math.max(360, Math.round(rect.width));
+  const height = Math.max(150, Math.round(rect.height));
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
   const padLeft = 46;
   const padRight = 12;
   const padTop = 14;
@@ -688,6 +714,15 @@ async function loadEquity(surface) {
   renderEquityChart();
 }
 
+// Keep the chart matched to its tile when the window is resized.
+function observeChartSize() {
+  window.addEventListener("resize", debounce(() => {
+    if (backtestState.series.length && document.body.dataset.tab === "backtest") {
+      renderEquityChart();
+    }
+  }, 150));
+}
+
 function setupSurfaceScope() {
   document.getElementById("backtest-surface-picker").addEventListener("click", (event) => {
     const button = event.target.closest(".segment");
@@ -696,9 +731,12 @@ function setupSurfaceScope() {
 }
 
 async function loadBacktest() {
-  const card = document.getElementById("backtest-card");
   const { response, data } = await fetchJson("/api/backtest");
-  if (!response.ok) return; // no stored backtest: leave the section hidden
+  if (!response.ok) {
+    document.getElementById("backtest-intro").textContent =
+      "No backtest stored yet. Run: python3 backend/scripts/run_backtest.py";
+    return;
+  }
 
   backtestState.models = data.models;
   // Colours are assigned once, by the API's default ordering, so a model keeps
@@ -716,7 +754,6 @@ async function loadBacktest() {
     `${formatDate(data.trained_through)}. Flat $${data.stake.toFixed(0)} stake per bet.`;
 
   renderBacktestTable();
-  card.hidden = false;
   await loadEquity("All");
 }
 
@@ -730,6 +767,8 @@ setupRefreshButton();
 refreshHealth();
 refreshLastStatus();
 ensurePlayerCache();
+setupTabs();
+observeChartSize();
 setupBacktestSorting();
 setupSurfaceScope();
 loadBacktest();

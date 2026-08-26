@@ -11,7 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body data-tab="predict" data-predict-state="compose">
   <div class="page-background" aria-hidden="true"></div>
 
   <div class="app-shell">
@@ -20,6 +20,13 @@
         <strong>Tennis Live</strong>
         <small>Match intelligence</small>
       </a>
+
+      <nav class="tabs" id="tabs" role="tablist" aria-label="Sections">
+        <button type="button" class="tab selected" role="tab" data-tab="predict"
+                aria-selected="true" aria-controls="panel-predict">Prediction</button>
+        <button type="button" class="tab" role="tab" data-tab="backtest"
+                aria-selected="false" aria-controls="panel-backtest">Backtest</button>
+      </nav>
 
       <div class="topbar-right">
         <span id="refresh-status" class="refresh-status" title="Last data refresh"></span>
@@ -31,20 +38,12 @@
     </header>
 
     <main>
-      <section class="workspace" id="predict-card" aria-labelledby="workspace-title">
-        <div class="workspace-heading">
-          <div>
-            <span class="eyebrow">Prediction workspace</span>
-            <h1 id="workspace-title">Match analysis</h1>
-          </div>
-          <div class="workspace-meta">
-            <span>Framework</span>
-            <strong>Surface-aware ensemble</strong>
-          </div>
-        </div>
+      <!-- ============ PREDICTION TAB ============ -->
+      <section class="tab-panel" id="panel-predict" role="tabpanel" aria-labelledby="tab-predict">
 
-        <div class="workspace-grid">
-          <div class="arena-panel">
+        <!-- compose state: pick a matchup -->
+        <div class="bento bento-compose" id="predict-compose">
+          <div class="tile tile-arena">
             <img src="arena-hero.png" alt="A packed indoor tennis arena viewed from above" fetchpriority="high" decoding="async">
             <div class="arena-shade" aria-hidden="true"></div>
             <div class="arena-caption">
@@ -53,11 +52,11 @@
             </div>
           </div>
 
-          <section class="prediction-panel" aria-labelledby="predict-title">
-            <div class="panel-heading">
+          <div class="tile tile-form">
+            <div class="tile-head">
               <div>
                 <span class="eyebrow">New prediction</span>
-                <h2 id="predict-title">Select matchup</h2>
+                <h2>Select matchup</h2>
               </div>
               <span class="model-pill">Models ready</span>
             </div>
@@ -119,101 +118,62 @@
                 <dd>Rank + head-to-head</dd>
               </div>
             </dl>
-          </section>
-        </div>
-      </section>
-
-      <section class="results-card" id="results-card" hidden>
-        <div class="section-heading">
-          <div>
-            <span class="eyebrow">Ensemble forecast</span>
-            <h2>Match prediction</h2>
           </div>
-          <div class="forecast-status">Analysis complete</div>
         </div>
 
-        <div class="forecast-layout">
-          <div class="mean-result">
-            <div class="mean-label">Win probability</div>
-            <div class="mean-names">
-              <span id="result-p1-name"></span>
-              <span id="result-p2-name"></span>
+        <!-- result state: the matchup form is replaced by its output -->
+        <div class="bento bento-result" id="predict-result">
+          <div class="tile tile-forecast">
+            <div class="tile-head">
+              <div>
+                <span class="eyebrow">Ensemble forecast</span>
+                <h2 id="forecast-title">Win probability</h2>
+              </div>
+              <button type="button" class="ghost-button" id="new-prediction">New prediction</button>
             </div>
-            <div class="mean-percents">
-              <span id="result-p1-pct" class="pct p1"></span>
-              <span id="result-p2-pct" class="pct p2"></span>
+
+            <div class="mean-result">
+              <div class="mean-names">
+                <span id="result-p1-name"></span>
+                <span id="result-p2-name"></span>
+              </div>
+              <div class="mean-percents">
+                <span id="result-p1-pct" class="pct p1"></span>
+                <span id="result-p2-pct" class="pct p2"></span>
+              </div>
+              <div class="mean-bar" aria-label="Predicted win probability">
+                <div class="mean-fill" id="mean-fill"></div>
+                <span class="bar-midpoint" aria-hidden="true"></span>
+              </div>
+              <p class="mean-caption" id="result-caption"></p>
             </div>
-            <div class="mean-bar" aria-label="Predicted win probability">
-              <div class="mean-fill" id="mean-fill"></div>
-              <span class="bar-midpoint" aria-hidden="true"></span>
-            </div>
-            <p class="mean-caption" id="result-caption"></p>
+
             <p class="h2h-line" id="h2h-line" hidden></p>
           </div>
 
-          <aside class="forecast-note">
-            <span>Model reading</span>
-            <strong>Probability, not certainty.</strong>
-            <p>The spread below shows how strongly the individual models agree with the ensemble result.</p>
-            <div class="note-factors" aria-label="Forecast input categories">
-              <span>Elo</span>
-              <span>Form</span>
-              <span>H2H</span>
+          <div class="tile tile-models">
+            <div class="tile-head">
+              <div>
+                <span class="eyebrow">Agreement</span>
+                <h2>Model breakdown</h2>
+              </div>
             </div>
-          </aside>
-        </div>
-
-        <div class="model-breakdown">
-          <div class="breakdown-heading">
-            <div>
-              <strong>Model breakdown</strong>
-              <small>Ordered by player one win probability</small>
+            <div class="tile-scroll">
+              <table class="model-table">
+                <thead>
+                  <tr>
+                    <th>Model</th>
+                    <th class="num" id="th-p1">P1 win</th>
+                    <th class="num" id="th-p2">P2 win</th>
+                    <th class="bar-col">Split</th>
+                  </tr>
+                </thead>
+                <tbody id="model-rows"></tbody>
+              </table>
             </div>
-            <span>Player one signal</span>
           </div>
-          <div class="table-scroll">
-            <table class="model-table">
-              <thead>
-                <tr>
-                  <th>Model</th>
-                  <th class="num" id="th-p1">P1 win</th>
-                  <th class="num" id="th-p2">P2 win</th>
-                  <th class="bar-col">Confidence split</th>
-                </tr>
-              </thead>
-              <tbody id="model-rows"></tbody>
-            </table>
-          </div>
-        </div>
 
-        <details class="features-details">
-          <summary>
-            <span>
-              <strong>Model inputs</strong>
-              <small>Features used, player one first</small>
-            </span>
-            <span>Show details</span>
-          </summary>
-          <div class="features-wrap">
-            <table class="features-table"><tbody id="feature-rows"></tbody></table>
-          </div>
-        </details>
-      </section>
-
-      <section class="player-info-card" id="player-info-card" aria-labelledby="player-info-title" hidden>
-        <div class="section-heading">
-          <div>
-            <span class="eyebrow">Player database</span>
-            <h2 id="player-info-title">Player information</h2>
-          </div>
-          <div class="profile-source">
-            <span>Live profiles</span>
-            <strong id="player-info-surface"></strong>
-          </div>
-        </div>
-
-        <div class="profile-comparison">
-          <article class="player-profile player-profile-one">
+          <article class="tile tile-profile">
             <header class="profile-header">
               <div class="profile-monogram" id="profile-p1-initials" aria-hidden="true"></div>
               <div class="profile-identity">
@@ -248,12 +208,10 @@
                 <dd id="profile-p1-last-match"></dd>
               </div>
             </dl>
-            <p class="profile-freshness">
-              Ratings current through <strong id="profile-p1-as-of"></strong>
-            </p>
+            <p class="profile-freshness">Through <strong id="profile-p1-as-of"></strong></p>
           </article>
 
-          <article class="player-profile player-profile-two">
+          <article class="tile tile-profile">
             <header class="profile-header">
               <div class="profile-monogram" id="profile-p2-initials" aria-hidden="true"></div>
               <div class="profile-identity">
@@ -288,82 +246,92 @@
                 <dd id="profile-p2-last-match"></dd>
               </div>
             </dl>
-            <p class="profile-freshness">
-              Ratings current through <strong id="profile-p2-as-of"></strong>
-            </p>
+            <p class="profile-freshness">Through <strong id="profile-p2-as-of"></strong></p>
           </article>
+
+          <div class="tile tile-features">
+            <div class="tile-head">
+              <div>
+                <span class="eyebrow">Model inputs</span>
+                <h2 id="player-info-surface">Features</h2>
+              </div>
+            </div>
+            <div class="tile-scroll">
+              <table class="features-table"><tbody id="feature-rows"></tbody></table>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section class="backtest-card" id="backtest-card" aria-labelledby="backtest-title" hidden>
-        <div class="section-heading">
-          <div>
-            <span class="eyebrow">Out-of-sample evaluation</span>
-            <h2 id="backtest-title">Backtest</h2>
-          </div>
-          <div class="profile-source">
-            <span>Computed offline</span>
-            <strong id="backtest-computed"></strong>
-          </div>
-        </div>
-
-        <p class="backtest-intro" id="backtest-intro"></p>
-
-        <div class="table-scroll">
-          <table class="model-table backtest-table">
-            <thead>
-              <tr id="backtest-head">
-                <th class="sortable" data-key="model" data-dir="asc">Model</th>
-                <th class="num sortable" data-key="brier" data-dir="asc">Brier</th>
-                <th class="num sortable" data-key="log_loss" data-dir="asc">Log loss</th>
-                <th class="num sortable" data-key="accuracy" data-dir="desc">Accuracy</th>
-                <th class="num sortable" data-key="n_bets" data-dir="desc">Bets</th>
-                <th class="num sortable" data-key="hit_rate" data-dir="desc">Hit rate</th>
-                <th class="num sortable" data-key="profit" data-dir="desc">Profit</th>
-                <th class="num sortable" data-key="roi" data-dir="desc">ROI</th>
-              </tr>
-            </thead>
-            <tbody id="backtest-rows"></tbody>
-          </table>
-        </div>
-
-        <div class="backtest-detail">
-          <div class="backtest-detail-head">
-            <div>
-              <strong>Cumulative ROI</strong>
-              <small>Running return on stake — click a model to show or hide it</small>
+      <!-- ============ BACKTEST TAB ============ -->
+      <section class="tab-panel" id="panel-backtest" role="tabpanel" aria-labelledby="tab-backtest">
+        <div class="bento bento-backtest" id="backtest-card">
+          <div class="tile tile-bt-table">
+            <div class="tile-head">
+              <div>
+                <span class="eyebrow">Out-of-sample evaluation</span>
+                <h2 id="backtest-title">Model scores</h2>
+              </div>
+              <span class="model-pill" id="backtest-computed"></span>
             </div>
-            <div class="segmented" id="backtest-surface-picker" role="radiogroup" aria-label="Surface scope">
-              <button type="button" class="segment selected" data-surface="All" role="radio" aria-checked="true">Total</button>
-              <button type="button" class="segment" data-surface="Hard" role="radio" aria-checked="false">Hard</button>
-              <button type="button" class="segment" data-surface="Clay" role="radio" aria-checked="false">Clay</button>
-              <button type="button" class="segment" data-surface="Grass" role="radio" aria-checked="false">Grass</button>
+            <div class="tile-scroll">
+              <table class="model-table backtest-table">
+                <thead>
+                  <tr id="backtest-head">
+                    <th class="sortable" data-key="model" data-dir="asc">Model</th>
+                    <th class="num sortable" data-key="brier" data-dir="asc">Brier</th>
+                    <th class="num sortable" data-key="log_loss" data-dir="asc">Log loss</th>
+                    <th class="num sortable" data-key="accuracy" data-dir="desc">Accuracy</th>
+                    <th class="num sortable" data-key="n_bets" data-dir="desc">Bets</th>
+                    <th class="num sortable" data-key="hit_rate" data-dir="desc">Hit rate</th>
+                    <th class="num sortable" data-key="profit" data-dir="desc">Profit</th>
+                    <th class="num sortable" data-key="roi" data-dir="desc">ROI</th>
+                  </tr>
+                </thead>
+                <tbody id="backtest-rows"></tbody>
+              </table>
             </div>
           </div>
 
-          <div class="equity-legend" id="equity-legend"></div>
+          <div class="tile tile-bt-info">
+            <div class="tile-head">
+              <div>
+                <span class="eyebrow">Method</span>
+                <h2>How this is measured</h2>
+              </div>
+            </div>
+            <p class="backtest-intro" id="backtest-intro"></p>
+            <p class="backtest-caveat">
+              Models were trained only on data before the backtest period, so these results
+              are genuinely out-of-sample. The simulation stakes a flat $1 on the
+              higher expected-value side whenever that value is positive, at Bet365 odds,
+              ignoring commission and stake limits. Built for analysis, not financial advice.
+            </p>
+          </div>
 
-          <figure class="equity-figure">
-            <svg id="equity-chart" viewBox="0 0 720 250" preserveAspectRatio="xMidYMid meet"
-                 role="img" aria-label="Cumulative return on stake for each model"></svg>
+          <div class="tile tile-bt-chart">
+            <div class="tile-head">
+              <div>
+                <span class="eyebrow">Cumulative ROI</span>
+                <h2>Return on stake</h2>
+              </div>
+              <div class="segmented" id="backtest-surface-picker" role="radiogroup" aria-label="Surface scope">
+                <button type="button" class="segment selected" data-surface="All" role="radio" aria-checked="true">Total</button>
+                <button type="button" class="segment" data-surface="Hard" role="radio" aria-checked="false">Hard</button>
+                <button type="button" class="segment" data-surface="Clay" role="radio" aria-checked="false">Clay</button>
+                <button type="button" class="segment" data-surface="Grass" role="radio" aria-checked="false">Grass</button>
+              </div>
+            </div>
+            <div class="equity-legend" id="equity-legend"></div>
+            <figure class="equity-figure">
+              <svg id="equity-chart" viewBox="0 0 720 250" preserveAspectRatio="none"
+                   role="img" aria-label="Cumulative return on stake for each model"></svg>
+            </figure>
             <figcaption id="equity-caption"></figcaption>
-          </figure>
+          </div>
         </div>
-
-        <p class="backtest-caveat">
-          Models were trained only on data up to the backtest period, so these results are
-          genuinely out-of-sample. Betting simulation stakes a flat $1 on the higher
-          expected-value side whenever that value is positive, priced at Bet365 odds.
-          It assumes those exact prices were available and ignores commission and limits.
-        </p>
       </section>
     </main>
-
-    <footer>
-      <strong>Tennis Live</strong>
-      <p>Built for analysis. Not financial advice.</p>
-      <a href="#predict-card">New prediction</a>
-    </footer>
   </div>
 
   <script src="app.js"></script>

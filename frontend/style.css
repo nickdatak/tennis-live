@@ -1928,3 +1928,188 @@ input:focus-visible {
   font-size: 10px;
   line-height: 1.65;
 }
+
+/* ==========================================================================
+   App layout: tabbed, viewport-locked bento
+   The page itself never scrolls on a desktop-sized viewport; each tile is a
+   fixed cell of the grid. Small or short viewports fall back to normal
+   document flow, because a hard lock there would clip content.
+   ========================================================================== */
+
+.tabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: rgba(228, 230, 227, 0.66);
+}
+
+.tab {
+  border: 0;
+  border-radius: 8px;
+  padding: 7px 18px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease, box-shadow 150ms ease;
+}
+
+.tab:hover { color: var(--ink-soft); }
+
+.tab.selected {
+  background: var(--surface-solid);
+  color: var(--ink);
+  box-shadow: 0 1px 3px rgba(52, 48, 58, 0.12);
+}
+
+/* Tab and prediction-state visibility are driven by attributes on <body>. */
+body[data-tab="predict"] #panel-backtest,
+body[data-tab="backtest"] #panel-predict { display: none; }
+body[data-predict-state="compose"] #predict-result,
+body[data-predict-state="result"] #predict-compose { display: none; }
+
+.bento {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+}
+
+.bento-compose { grid-template-columns: 5fr 7fr; }
+
+.bento-result {
+  grid-template-columns: repeat(12, 1fr);
+  grid-template-rows: 1.05fr 1fr;
+}
+.tile-forecast { grid-column: span 7; }
+.tile-models   { grid-column: span 5; }
+.tile-profile  { grid-column: span 4; }
+.tile-features { grid-column: span 4; }
+
+.bento-backtest {
+  grid-template-columns: repeat(12, 1fr);
+  grid-template-rows: 1.12fr 1fr;
+}
+.tile-bt-table { grid-column: span 8; }
+.tile-bt-info  { grid-column: span 4; }
+.tile-bt-chart { grid-column: span 12; }
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;          /* lets inner scroll areas shrink inside the grid */
+  overflow: hidden;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow: var(--shadow-md);
+}
+
+.tile-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.tile-head h2,
+.tile-head h3 {
+  margin-top: 5px;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+/* Safety valve: a tile keeps its own scroll if content genuinely overflows,
+   so the page stays fixed instead of growing. */
+.tile-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.ghost-button {
+  flex: 0 0 auto;
+  padding: 7px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--ink-soft);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease, transform 150ms ease;
+}
+.ghost-button:hover { background: #fff; transform: translateY(-1px); }
+
+/* Arena image tile */
+.tile-arena {
+  position: relative;
+  padding: 0;
+  background: #15203a;
+}
+.tile-arena img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(0.86) contrast(1.02);
+  transition: transform 800ms cubic-bezier(0.2, 0.75, 0.25, 1);
+}
+.tile-arena:hover img { transform: scale(1.03); }
+
+/* Head pinned top, summary pinned bottom, controls optically centred between. */
+.tile-form #predict-form {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 18px;
+}
+.tile-form .input-summary { margin-top: auto; }
+
+/* Forecast tile fills its height so the bar sits optically centred. */
+.tile-forecast .mean-result { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+.tile-forecast .h2h-line { margin-top: 10px; text-align: center; }
+
+.tile-features .features-table { width: 100%; }
+
+/* Seven rows plus a header must fit the tile without an inner scrollbar. */
+.tile-bt-table .model-table th,
+.tile-bt-table .model-table td { padding-top: 7px; padding-bottom: 7px; }
+
+.tile-bt-info .backtest-intro { margin: 0 0 12px; font-size: 11px; }
+.tile-bt-info .backtest-caveat { margin-top: auto; padding-top: 12px; }
+
+.tile-bt-chart .equity-legend { margin: 0 0 10px; }
+.tile-bt-chart .equity-figure { flex: 1; min-height: 0; margin: 0; }
+.tile-bt-chart #equity-chart { width: 100%; height: 100%; }
+.tile-bt-chart #equity-caption { margin-top: 8px; color: var(--muted); font-size: 10px; font-weight: 500; }
+
+/* Locked viewport on comfortable screens only. */
+@media (min-width: 1000px) and (min-height: 680px) {
+  html, body { height: 100%; overflow: hidden; }
+  body { padding: clamp(14px, 1.8vw, 26px); }
+  .app-shell { display: flex; flex-direction: column; height: 100%; }
+  .topbar { flex: 0 0 auto; }
+  main { flex: 1; min-height: 0; }
+  .tab-panel { height: 100%; }
+  .bento { height: 100%; }
+}
+
+/* Below that, stack the tiles and let the document scroll normally. */
+@media (max-width: 999px), (max-height: 679px) {
+  .bento { grid-template-columns: 1fr; grid-template-rows: none; }
+  .bento > .tile { grid-column: auto; }
+  .tile-arena { min-height: 220px; }
+  .tile-bt-chart .equity-figure { min-height: 220px; }
+  .tabs { order: 3; width: 100%; justify-content: center; }
+}
