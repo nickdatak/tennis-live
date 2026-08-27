@@ -74,8 +74,15 @@ async function refreshHealth() {
     const res = await fetch("/api/health");
     const data = await res.json();
     const dbNote = data.using_dev_sqlite ? " · dev DB" : "";
+    const full = `${data.models_loaded} models · ${data.players_in_db} players${dbNote}`;
+    badge.title = full;
     if (data.status === "ok") {
-      badge.textContent = `${data.models_loaded} models · ${data.players_in_db} players${dbNote}`;
+      // The full label cannot fit beside the tab row on a phone, and an
+      // ellipsis cutting a word in half reads as broken, so show the player
+      // count alone there; the title attribute keeps the detail available.
+      badge.textContent = window.matchMedia("(max-width: 620px)").matches
+        ? `${data.players_in_db} players${dbNote}`
+        : full;
       badge.className = "badge ok";
     } else {
       badge.textContent = `Degraded · ${data.database}`;

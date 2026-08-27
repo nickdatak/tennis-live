@@ -2201,3 +2201,150 @@ body[data-tab="predict"][data-predict-state="compose"] #predict-compose {
     align-content: start;
   }
 }
+
+/* ==========================================================================
+   Small-screen layout
+   Below the bento breakpoint the header wraps to two rows, the compose card
+   stops floating, and wide tables shed their least decisive columns so the
+   remaining ones fit without a horizontal scroll.
+   ========================================================================== */
+
+@media (max-width: 999px) {
+  /* Row 1: identity + status. Row 2: the tab switcher, full width.
+     Without wrapping, `.tabs { width: 100% }` squeezes the refresh button
+     down to a sliver and the two overlap. */
+  .topbar {
+    flex-wrap: wrap;
+    gap: 10px 12px;
+    min-height: 0;
+    padding: 12px 16px;
+  }
+
+  .brand { flex: 0 1 auto; }
+  .brand strong { font-size: 13px; white-space: nowrap; }
+
+  .topbar-right {
+    flex: 0 0 auto;
+    margin-left: auto;
+  }
+
+  .tabs {
+    order: 3;
+    flex: 1 0 100%;
+    width: auto;
+    justify-content: stretch;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 9px 12px;
+    text-align: center;
+  }
+
+  /* The centred-card treatment only makes sense when there is room around it;
+     on a phone it leaves the shell floating in the middle of the backdrop. */
+  body[data-tab="predict"][data-predict-state="compose"] {
+    display: block;
+    align-content: normal;
+  }
+
+  body[data-tab="predict"][data-predict-state="compose"] .app-shell {
+    width: 100%;
+  }
+
+  .bento { gap: 10px; padding: 10px; }
+
+  .tile {
+    padding: 15px 16px;
+    border-radius: var(--radius-lg);
+  }
+
+  .tile-head { margin-bottom: 12px; }
+  .tile-head h2 { font-size: 16px; }
+
+  /* Model breakdown: the bar column is decorative next to the percentages. */
+  .tile-models .model-table th.bar-col,
+  .tile-models .model-table td.bar-col { display: none; }
+}
+
+@media (max-width: 700px) {
+  /* Keep Model / Brier / Profit / ROI — the columns a decision rests on. */
+  .backtest-table th:nth-child(3), .backtest-table td:nth-child(3), /* log loss */
+  .backtest-table th:nth-child(5), .backtest-table td:nth-child(5)  /* bets */
+  { display: none; }
+
+  .equity-legend { gap: 5px; }
+  .legend-chip { padding: 5px 9px; }
+}
+
+@media (max-width: 560px) {
+  .backtest-table th:nth-child(4), .backtest-table td:nth-child(4), /* accuracy */
+  .backtest-table th:nth-child(6), .backtest-table td:nth-child(6)  /* hit rate */
+  { display: none; }
+
+  .tile { padding: 14px; }
+  .tile-head h2 { font-size: 15px; }
+  .brand small { display: none; }
+}
+
+@media (max-width: 620px) {
+  /* Full-bleed on a phone: the shell fills the screen and the matchup card
+     centres inside it, instead of ending mid-screen against the backdrop. */
+  body[data-tab="predict"][data-predict-state="compose"] .app-shell {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+  }
+
+  body[data-tab="predict"][data-predict-state="compose"] main,
+  body[data-tab="predict"][data-predict-state="compose"] #panel-predict {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+  }
+
+  body[data-tab="predict"][data-predict-state="compose"] #predict-compose {
+    flex: 1;
+    align-content: center;
+  }
+
+  .badge { max-width: 150px; }
+}
+
+@media (max-width: 620px) {
+  /* The headline percentages are sized for a wide tile; at 51px the pair
+     needs 486px inside a 291px column and the second one runs off-screen. */
+  .mean-percents .pct { font-size: clamp(24px, 8.5vw, 34px); }
+  .mean-names { font-size: 11px; }
+
+  /* 20px of horizontal cell padding is most of the width on a phone. */
+  .tile-models .model-table th,
+  .tile-models .model-table td { padding: 10px 8px; }
+  .tile-models .model-table th { white-space: normal; }
+
+  .h2h-line strong { margin: 0 3px; }
+  .h2h-line .h2h-since { display: block; margin-top: 2px; }
+}
+
+@media (max-width: 620px) {
+  /* A legacy rule pins every .model-table to min-width:600px so it scrolls
+     sideways. With the bar column dropped and the padding tightened the
+     remaining columns fit, so let the table shrink to its container. */
+  .tile-models .model-table,
+  .tile-bt-table .model-table { min-width: 0; }
+
+  .tile-bt-table .model-table th,
+  .tile-bt-table .model-table td { padding-right: 8px; padding-left: 8px; }
+}
+
+@media (max-width: 620px) {
+  /* Side-by-side heading and control squeezes both into wrapped fragments. */
+  .tile-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .tile-head .segmented { width: 100%; }
+  .tile-head .ghost-button,
+  .tile-head .model-pill { align-self: flex-start; }
+}
