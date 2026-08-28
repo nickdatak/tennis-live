@@ -68,44 +68,15 @@ MODEL_FILENAMES = {
 SURFACES = ("Hard", "Clay", "Grass")
 INITIAL_ELO = 1500.0
 
-# Tennis API (RapidAPI: tennis-api-atp-wta-itf) — key lives in backend/.env.
-TENNIS_API_KEY = os.environ.get("TENNIS_API_KEY", "").strip()
-TENNIS_API_HOST = "tennis-api-atp-wta-itf.p.rapidapi.com"
-# Hard ceiling per refresh run so a bug can never spray requests.
-REFRESH_MAX_REQUESTS = 25
-
-# Refresh is DISABLED by default to preserve Tennis API quota. Set
-# REFRESH_ENABLED=1 to turn POST /api/refresh back on; the code is untouched.
-REFRESH_ENABLED = os.environ.get("REFRESH_ENABLED", "").strip() in {"1", "true", "yes"}
-
-# When set, POST /api/refresh requires this value in the X-Refresh-Token
-# header. Set it on any public deployment — every refresh spends API quota.
-REFRESH_TOKEN = os.environ.get("REFRESH_TOKEN", "").strip()
+# The database holds a static snapshot of the research dataset (tennis-data.co.uk),
+# current through the last stored match. There is no live ingest: no free odds+
+# results feed covers the six-feature contract, and a paid one is out of scope
+# here. The intended next step is a scheduled job (every ~6h) that appends new
+# results and replays the research Elo update against this same schema.
 
 # Set PRODUCTION=1 on the hosting platform: refuses to boot without a real
 # DATABASE_URL instead of silently using the ephemeral SQLite fallback.
 PRODUCTION = os.environ.get("PRODUCTION", "").strip() in {"1", "true", "yes"}
-
-# Elo parameters — must stay identical to research/01_elo_calculation.ipynb.
-ELO_SCALE = 400.0
-GLOBAL_BASE_K = 32.0
-SURFACE_BASE_K = {"Hard": 32.0, "Clay": 40.0, "Grass": 52.0}
-# API tier strings -> research tournament multipliers ("Finals" == Masters Cup).
-TIER_MULTIPLIERS = {
-    "Grand Slam": 1.00,
-    "ATP Masters 1000": 1.05,
-    "ATP 500": 0.95,
-    "ATP 250": 0.90,
-    "Finals": 1.00,
-}
-# API court names -> research surfaces (indoor variants collapse, as in training).
-API_SURFACE_MAP = {
-    "Hard": "Hard",
-    "I.hard": "Hard",
-    "Clay": "Clay",
-    "I.clay": "Clay",
-    "Grass": "Grass",
-}
 
 # Training semantics: a player's first match on a surface starts from Elo 1500.
 # The seed JSON instead fills never-played surfaces with the player's overall

@@ -73,6 +73,7 @@ async function refreshHealth() {
   try {
     const res = await fetch("/api/health");
     const data = await res.json();
+    setDataVintage(data.data_through);
     const dbNote = data.using_dev_sqlite ? " · dev DB" : "";
     const full = `${data.models_loaded} models · ${data.players_in_db} players${dbNote}`;
     badge.title = full;
@@ -399,70 +400,13 @@ function setupForm(player1Field, player2Field, surfacePicker) {
   });
 }
 
-/* ---------- data refresh ---------- */
+/* ---------- data vintage ---------- */
 
-async function refreshLastStatus() {
-  const el = document.getElementById("refresh-status");
-  try {
-    const data = await (await fetch("/api/refresh/last")).json();
-    if (data.status === "ok") {
-      el.textContent = `data through ${data.window_end}`;
-    } else if (data.status === "error") {
-      el.textContent = "last refresh failed";
-    } else {
-      el.textContent = "";
-    }
-  } catch { el.textContent = ""; }
-}
-
-function setupRefreshButton() {
-  const button = document.getElementById("refresh-button");
-  const buttonLabel = button.querySelector(".refresh-label");
-  const statusEl = document.getElementById("refresh-status");
-  button.addEventListener("click", async () => {
-    button.disabled = true;
-    button.classList.add("is-loading");
-    button.setAttribute("aria-busy", "true");
-    buttonLabel.textContent = "Refreshing";
-    statusEl.textContent = "";
-    try {
-      const doPost = () => {
-        const headers = {};
-        const token = sessionStorage.getItem("refreshToken");
-        if (token) headers["X-Refresh-Token"] = token;
-        return fetch("/api/refresh", { method: "POST", headers });
-      };
-      let res = await doPost();
-      if (res.status === 503) {
-        statusEl.textContent = "refresh disabled to preserve quota";
-        return;
-      }
-      if (res.status === 401) {
-        // Deployment is token-protected; ask once and remember for the session.
-        const token = window.prompt("This deployment requires a refresh token:");
-        if (!token) throw new Error("Refresh cancelled.");
-        sessionStorage.setItem("refreshToken", token);
-        res = await doPost();
-        if (res.status === 401) sessionStorage.removeItem("refreshToken");
-      }
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || `Refresh failed (${res.status})`);
-      const parts = [`${data.matches_applied} matches`];
-      if (data.retired_skipped) parts.push(`${data.retired_skipped} retired skipped`);
-      if (data.new_players) parts.push(`${data.new_players} new players`);
-      if (data.rank_updates) parts.push(`${data.rank_updates} rank changes`);
-      statusEl.textContent = parts.join(" · ");
-      refreshHealth();
-      setTimeout(refreshLastStatus, 6000);
-    } catch (error) {
-      statusEl.textContent = `refresh failed: ${error.message}`;
-    } finally {
-      button.disabled = false;
-      button.classList.remove("is-loading");
-      button.removeAttribute("aria-busy");
-      buttonLabel.textContent = "Refresh";
-    }
-  });
+// The dataset is a static research snapshot, so "how current is this?" is just
+// the newest stored match. Refreshing it live is a roadmap item, not a button.
+function setDataVintage(value) {
+  const el = document.getElementById("data-vintage");
+  el.textContent = value ? `data through ${formatDateCompact(value)}` : "";
 }
 
 /* ---------- backtest ---------- */
@@ -770,9 +714,7 @@ const player1Field = setupAutocomplete("player1-input", "player1-suggestions");
 const player2Field = setupAutocomplete("player2-input", "player2-suggestions");
 const surfacePicker = setupSurfacePicker();
 setupForm(player1Field, player2Field, surfacePicker);
-setupRefreshButton();
 refreshHealth();
-refreshLastStatus();
 ensurePlayerCache();
 setupTabs();
 observeChartSize();

@@ -29,12 +29,10 @@ create table if not exists player_recent_matches (
 );
 create index if not exists idx_recent_matches_player on player_recent_matches(player_id);
 
--- Completed main-draw matches (H2H display + refresh dedup). Retired and
--- walkover matches are intentionally never stored.
+-- Completed main-draw matches from the research snapshot (H2H display).
+-- Retired and walkover matches are intentionally never stored.
 create table if not exists match_results (
   id               bigint generated always as identity primary key,
-  api_match_id     text unique,
-  source           text not null default 'api',   -- 'api' | 'research'
   date             date not null,
   surface          text,
   tier             text,
@@ -46,24 +44,6 @@ create table if not exists match_results (
 create index if not exists idx_match_results_date on match_results(date);
 create index if not exists idx_match_results_winner on match_results(winner_id);
 create index if not exists idx_match_results_loser on match_results(loser_id);
-
--- One row per refresh run; latest successful row is the watermark.
-create table if not exists refresh_log (
-  id               bigint generated always as identity primary key,
-  ran_at           timestamptz not null default now(),
-  window_start     date not null,
-  window_end       date not null,
-  status           text not null,
-  matches_applied  integer not null default 0,
-  retired_skipped  integer not null default 0,
-  new_players      integer not null default 0,
-  rank_updates     integer not null default 0,
-  requests_used    integer not null default 0,
-  detail           text
-);
-
--- Tennis API player id mapping lives on players.
-alter table players add column if not exists api_player_id bigint unique;
 
 -- Backtest results. Written only by backend/scripts/run_backtest.py (local);
 -- the dashboard reads these tables and never computes a backtest itself.

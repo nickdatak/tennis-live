@@ -3,10 +3,10 @@
 Usage: python3 backend/scripts/seed_match_history.py
 
 Reads research/data/output/matches_2015_onwards.csv (never writes to
-research/), keeps completed matches whose players exist in the players table,
-and stores them with source='research'. Elo/stats are NOT touched — the seed
-players.json already reflects this history. Idempotent: wipes and reloads only
-the source='research' rows.
+research/) and keeps completed matches whose players exist in the players table.
+Elo/stats are NOT touched — the seed players.json already reflects this history.
+Idempotent: this CSV is the only source of match_results, so the table is wiped
+and reloaded wholesale.
 """
 from __future__ import annotations
 
@@ -47,12 +47,8 @@ def main() -> None:
         players_by_name = {
             p.name: p.id for p in session.scalars(select(Player)).all()
         }
-        deleted = (
-            session.query(MatchResult)
-            .filter(MatchResult.source == "research")
-            .delete(synchronize_session=False)
-        )
-        print(f"Cleared {deleted:,} existing research-sourced rows")
+        deleted = session.query(MatchResult).delete(synchronize_session=False)
+        print(f"Cleared {deleted:,} existing match rows")
 
         inserted = skipped = 0
         for row in completed.itertuples(index=False):
@@ -63,8 +59,6 @@ def main() -> None:
                 continue
             session.add(
                 MatchResult(
-                    api_match_id=None,
-                    source="research",
                     date=row.Date.date(),
                     surface=row.Surface if pd.notna(row.Surface) else None,
                     tier=row.Series if pd.notna(row.Series) else None,
