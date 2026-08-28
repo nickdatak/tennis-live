@@ -1732,6 +1732,10 @@ input:focus-visible {
   font-weight: 600;
 }
 
+.backtest-table .num {
+  white-space: nowrap;
+}
+
 .model-table td.positive { color: #4b6f40; }
 .model-table td.negative { color: var(--error); }
 
