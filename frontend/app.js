@@ -7,6 +7,13 @@
 const API_BASE = String(window.TENNIS_API_BASE || "").replace(/\/+$/, "");
 const apiUrl = (path) => `${API_BASE}${path}`;
 
+/* A .railway.internal host resolves only inside Railway's private network, so
+   from a browser every call dies at DNS with no useful error. Catch that here
+   rather than letting the whole dashboard fail silently. */
+const API_BASE_FAULT = /\.railway\.internal/i.test(API_BASE)
+  ? "config.js points at Railway's private domain. Use the public *.up.railway.app URL."
+  : null;
+
 const FEATURE_LABELS = {
   GlobalEloDiff: "Global Elo diff",
   SurfaceEloDiff: "Surface Elo diff",
@@ -77,6 +84,12 @@ async function fetchJson(path, options) {
 
 async function refreshHealth() {
   const badge = document.getElementById("health-badge");
+  if (API_BASE_FAULT) {
+    badge.textContent = "Bad API URL";
+    badge.title = API_BASE_FAULT;
+    badge.className = "badge bad";
+    return;
+  }
   try {
     const res = await fetch(apiUrl("/api/health"));
     const data = await res.json();
