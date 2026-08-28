@@ -4,7 +4,17 @@
    Vercel's CDN, so in production every call is cross-origin. config.js sets
    window.TENNIS_API_BASE. An empty value means same-origin, which is what
    `python3 backend/run.py` serves locally -- so local dev needs no change. */
-const API_BASE = String(window.TENNIS_API_BASE || "").replace(/\/+$/, "");
+/* A bare host with no scheme ("api.example.com") is a RELATIVE url: the browser
+   resolves it against this page and requests
+   https://this-site/api.example.com/... , which 404s. Normalise to https so a
+   missing scheme cannot silently break every call. */
+function normaliseApiBase(raw) {
+  const value = String(raw || "").trim().replace(/\/+$/, "");
+  if (!value) return "";
+  return /^https?:\/\//i.test(value) ? value : `https://${value}`;
+}
+
+const API_BASE = normaliseApiBase(window.TENNIS_API_BASE);
 const apiUrl = (path) => `${API_BASE}${path}`;
 
 /* A .railway.internal host resolves only inside Railway's private network, so

@@ -17,4 +17,4 @@
  * you want locally: `python3 backend/run.py` serves the frontend and the API
  * together on http://127.0.0.1:8000.
  */
-window.TENNIS_API_BASE = "tennis-live-production.up.railway.app";
+window.TENNIS_API_BASE = "https://tennis-live-production.up.railway.app";
