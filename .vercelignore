@@ -1,5 +1,4 @@
-# Vercel now serves ONLY the static frontend (frontend/ -> the CDN).
-# The API is a separate Railway service, so none of the Python ships here.
+
 backend/
 api/
 research/
