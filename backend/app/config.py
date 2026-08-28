@@ -78,6 +78,18 @@ INITIAL_ELO = 1500.0
 # DATABASE_URL instead of silently using the ephemeral SQLite fallback.
 PRODUCTION = os.environ.get("PRODUCTION", "").strip() in {"1", "true", "yes"}
 
+# The API and the frontend are now separate origins (API on Railway, static
+# frontend on Vercel's CDN), so the browser requires CORS. Comma-separated
+# list in ALLOWED_ORIGINS, e.g. "https://tennis-live.vercel.app".
+# There are no cookies and no auth, so "*" is safe but sloppy: warn in prod.
+_origins_raw = os.environ.get("ALLOWED_ORIGINS", "").strip()
+ALLOWED_ORIGINS = [o.strip() for o in _origins_raw.split(",") if o.strip()] or ["*"]
+if PRODUCTION and ALLOWED_ORIGINS == ["*"]:
+    CONFIG_ERRORS.append(
+        "PRODUCTION=1 but ALLOWED_ORIGINS is not set; the API accepts requests "
+        "from any origin. Set it to the frontend URL."
+    )
+
 # Training semantics: a player's first match on a surface starts from Elo 1500.
 # The seed JSON instead fills never-played surfaces with the player's overall
 # Elo. "initial" (default) restores the training-faithful 1500 for surfaces

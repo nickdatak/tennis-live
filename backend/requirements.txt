@@ -1,6 +1,12 @@
-# ML stack pinned to the exact versions the research models were trained with
-# (Python 3.9.6). Do not bump these without re-exporting the joblib artifacts.
+# LOCAL DEVELOPMENT deps. The deployed Railway service installs the root
+# requirements.txt instead -- the two differ in exactly one line, below.
+#
+# ML stack pinned to the versions the research models were trained with.
+# Verified to give bit-identical predictions on Python 3.9 and 3.12.
 scikit-learn==1.6.1
+# Plain xgboost here, xgboost-cpu in the root file: xgboost-cpu publishes
+# Linux and Windows wheels only, so it cannot install on macOS. Same library,
+# same version, minus the GPU build.
 xgboost==2.1.4
 lightgbm==4.6.0
 joblib==1.5.2

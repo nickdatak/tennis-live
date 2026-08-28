@@ -4,11 +4,12 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func, select
 
 from .api import backtest, players, predict
-from .config import CONFIG_ERRORS, FRONTEND_DIR, USING_DEV_SQLITE
+from .config import ALLOWED_ORIGINS, CONFIG_ERRORS, FRONTEND_DIR, USING_DEV_SQLITE
 from .db.database import SessionLocal, init_db
 from .db.models import MatchResult, Player
 from .schemas import HealthResponse
@@ -36,6 +37,17 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Tennis Live", lifespan=lifespan)
+
+# The frontend is served from Vercel's CDN and calls this API cross-origin.
+# No cookies or auth headers are involved, so credentials stay off.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type"],
+)
+
 app.include_router(players.router)
 app.include_router(predict.router)
 app.include_router(backtest.router)
@@ -70,7 +82,8 @@ def health() -> HealthResponse:
     )
 
 
-# Mounted last so /api keeps precedence. On Vercel the CDN serves the
-# frontend and the directory may be absent from the function bundle.
+# Mounted last so /api keeps precedence. In production the CDN serves the
+# frontend, so this directory is usually absent; the mount exists so that
+# `python3 backend/run.py` still serves the whole app from one origin locally.
 if FRONTEND_DIR.is_dir():
     app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")

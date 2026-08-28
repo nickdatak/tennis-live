@@ -1,9 +1,11 @@
-# Keep the function bundle small: research data/notebooks are never needed at
-# runtime (models are the committed copies in backend/models/).
+# Vercel now serves ONLY the static frontend (frontend/ -> the CDN).
+# The API is a separate Railway service, so none of the Python ships here.
+backend/
+api/
 research/
-backend/data/
-backend/tests/
-backend/.env
+requirements.txt
+railway.json
+.python-version
 players.json
 .claude/
 *.ipynb

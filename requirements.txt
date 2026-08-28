@@ -1,10 +1,18 @@
-# Root copy for Vercel's Python builder (canonical: backend/requirements.txt).
-# ML stack pinned to the training environment — do not bump without
-# re-exporting the joblib artifacts.
+# Runtime dependencies for the Railway service (the API).
+#
+# ML stack pinned to the training environment. Verified 28 Aug 2026: these
+# pins load all six joblib artifacts and produce BIT-IDENTICAL predictions on
+# Python 3.9 and 3.12, so the runtime may use either. Do not bump without
+# re-exporting the artifacts from research/03_models.ipynb.
+#
+# Python is pinned to 3.12 in .python-version. That is the CEILING, not a
+# preference: numpy 1.26.4 and pandas 2.1.4 publish no cp313 wheels, so 3.13
+# would fall back to building from source (or fail).
 scikit-learn==1.6.1
-# xgboost-cpu, NOT xgboost: on Linux pip resolves plain xgboost to the 224MB
-# CUDA wheel (~800MB unpacked), blowing Vercel's 500MB function limit.
-# xgboost-cpu is the same package/version without GPU support (4.5MB wheel).
+# xgboost-cpu, NOT xgboost: plain xgboost resolves to the ~224MB CUDA wheel on
+# Linux, which is pure weight on a CPU-only container. Note this package ships
+# Linux/Windows wheels only -- macOS has none, which is why the local file
+# (backend/requirements.txt) pins plain xgboost instead.
 xgboost-cpu==2.1.4
 lightgbm==4.6.0
 joblib==1.5.2
@@ -12,5 +20,6 @@ numpy==1.26.4
 pandas==2.1.4
 
 fastapi>=0.128
+uvicorn>=0.39
 sqlalchemy>=2.0
 psycopg2-binary>=2.9

@@ -1,5 +1,12 @@
 "use strict";
 
+/* The API now runs as its own service (Railway); this page is served from
+   Vercel's CDN, so in production every call is cross-origin. config.js sets
+   window.TENNIS_API_BASE. An empty value means same-origin, which is what
+   `python3 backend/run.py` serves locally -- so local dev needs no change. */
+const API_BASE = String(window.TENNIS_API_BASE || "").replace(/\/+$/, "");
+const apiUrl = (path) => `${API_BASE}${path}`;
+
 const FEATURE_LABELS = {
   GlobalEloDiff: "Global Elo diff",
   SurfaceEloDiff: "Surface Elo diff",
@@ -60,8 +67,8 @@ function playerInitials(name) {
     .toUpperCase();
 }
 
-async function fetchJson(url, options) {
-  const response = await fetch(url, options);
+async function fetchJson(path, options) {
+  const response = await fetch(apiUrl(path), options);
   const data = await response.json().catch(() => ({}));
   return { response, data };
 }
@@ -71,7 +78,7 @@ async function fetchJson(url, options) {
 async function refreshHealth() {
   const badge = document.getElementById("health-badge");
   try {
-    const res = await fetch("/api/health");
+    const res = await fetch(apiUrl("/api/health"));
     const data = await res.json();
     setDataVintage(data.data_through);
     const dbNote = data.using_dev_sqlite ? " · dev DB" : "";
@@ -105,7 +112,7 @@ let playerCachePromise = null;
 function ensurePlayerCache() {
   if (playerCache) return Promise.resolve();
   if (!playerCachePromise) {
-    playerCachePromise = fetch("/api/players/all")
+    playerCachePromise = fetch(apiUrl("/api/players/all"))
       .then((res) => { if (!res.ok) throw new Error(res.status); return res.json(); })
       .then((data) => { playerCache = data.players; })
       .catch(() => { playerCachePromise = null; }); // retry on next use
@@ -141,7 +148,7 @@ function setupAutocomplete(inputId, listId) {
     } else {
       // Cache unavailable — fall back to server-side search.
       try {
-        const res = await fetch(`/api/players?q=${encodeURIComponent(query)}&limit=8`);
+        const res = await fetch(apiUrl(`/api/players?q=${encodeURIComponent(query)}&limit=8`));
         players = (await res.json()).players;
       } catch { /* server unreachable; badge already shows it */ }
     }

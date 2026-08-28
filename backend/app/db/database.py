@@ -13,12 +13,14 @@ if USING_DEV_SQLITE:
     except OSError:
         pass  # read-only serverless filesystem; init_db will surface the error
 
-# Small pool + recycle: friendly to serverless instances talking to the
-# Supabase pooler (harmless for local SQLite).
+# One long-lived process (a container, not a per-request function), so a
+# real pool is both possible and correct: it is created once and reused for
+# the life of the process instead of being rebuilt on every cold start.
+# pool_recycle stays modest because the Supabase pooler drops idle sessions.
 _pool_kwargs = (
     {}
     if USING_DEV_SQLITE
-    else {"pool_size": 2, "max_overflow": 3, "pool_recycle": 300}
+    else {"pool_size": 5, "max_overflow": 5, "pool_recycle": 300}
 )
 engine = create_engine(DATABASE_URL, pool_pre_ping=True, future=True, **_pool_kwargs)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
