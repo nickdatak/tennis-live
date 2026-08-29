@@ -27,8 +27,28 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False
 
 
 def init_db() -> None:
-    """Create tables if they don't exist (idempotent)."""
+    """Create any missing tables. FOR THE SEEDING SCRIPTS ONLY.
+
+    This issues DDL, so it must never run in the request-serving process: the
+    Railway role is read-only, and a server that can reshape its own schema is
+    a server that can silently create drift. `create_all` only ever ADDS -- it
+    never drops a removed table nor alters a changed column -- so calling it at
+    boot let an orphaned `refresh_log` survive in production long after the
+    model was deleted. Schema changes belong in the scripts, run deliberately.
+    """
     Base.metadata.create_all(engine)
+
+
+def missing_tables() -> list:
+    """Tables the ORM expects but the database does not have. Read-only.
+
+    The boot-time replacement for init_db(): same early warning, no DDL and no
+    privileges beyond SELECT. Surfaced through /api/health.
+    """
+    from sqlalchemy import inspect
+
+    present = set(inspect(engine).get_table_names())
+    return sorted(name for name in Base.metadata.tables if name not in present)
 
 
 def get_session():

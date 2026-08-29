@@ -108,6 +108,34 @@ def _rank_diff(rank1: Optional[float], rank2: Optional[float]) -> float:
     return rank1 - rank2
 
 
+# Under a player swap the four difference columns negate, while the two layoff
+# flags are per-player and simply exchange places.
+NEGATED_COLUMNS = [
+    "GlobalEloDiff",
+    "SurfaceEloDiff",
+    "RankDiff",
+    "MatchesLast7DaysDiff",
+]
+SWAPPED_COLUMNS = ("Player1LayoffOver6Months", "Player2LayoffOver6Months")
+
+
+def swap_orientation(frame: pd.DataFrame) -> pd.DataFrame:
+    """Return the same rows viewed with player1 and player2 exchanged.
+
+    This is the single definition of a player swap. build_feature_frame uses it
+    to build its second row, and backend/scripts/run_backtest.py uses it to
+    score the same orientation-averaged probability the API serves — so the two
+    paths cannot drift apart.
+    """
+    assert frame.columns.tolist() == MODEL_FEATURE_COLUMNS
+    swapped = frame.copy()
+    swapped[NEGATED_COLUMNS] = -frame[NEGATED_COLUMNS]
+    first, second = SWAPPED_COLUMNS
+    swapped[first] = frame[second].to_numpy()
+    swapped[second] = frame[first].to_numpy()
+    return swapped[MODEL_FEATURE_COLUMNS]
+
+
 def build_feature_frame(
     player1: PlayerState,
     player2: PlayerState,
@@ -129,24 +157,22 @@ def build_feature_frame(
     rank_diff = _rank_diff(player1.rank, player2.rank)
     workload_diff = float(p1_workload - p2_workload)
 
-    rows = [
-        {
-            "GlobalEloDiff": global_diff,
-            "SurfaceEloDiff": surface_diff,
-            "RankDiff": rank_diff,
-            "Player1LayoffOver6Months": p1_layoff,
-            "Player2LayoffOver6Months": p2_layoff,
-            "MatchesLast7DaysDiff": workload_diff,
-        },
-        {
-            "GlobalEloDiff": -global_diff,
-            "SurfaceEloDiff": -surface_diff,
-            "RankDiff": -rank_diff if not np.isnan(rank_diff) else np.nan,
-            "Player1LayoffOver6Months": p2_layoff,
-            "Player2LayoffOver6Months": p1_layoff,
-            "MatchesLast7DaysDiff": -workload_diff,
-        },
-    ]
-    frame = pd.DataFrame(rows, columns=MODEL_FEATURE_COLUMNS, dtype=float)
+    player1_first = pd.DataFrame(
+        [
+            {
+                "GlobalEloDiff": global_diff,
+                "SurfaceEloDiff": surface_diff,
+                "RankDiff": rank_diff,
+                "Player1LayoffOver6Months": p1_layoff,
+                "Player2LayoffOver6Months": p2_layoff,
+                "MatchesLast7DaysDiff": workload_diff,
+            }
+        ],
+        columns=MODEL_FEATURE_COLUMNS,
+        dtype=float,
+    )
+    frame = pd.concat(
+        [player1_first, swap_orientation(player1_first)], ignore_index=True
+    )
     assert frame.columns.tolist() == MODEL_FEATURE_COLUMNS
     return frame

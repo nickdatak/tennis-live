@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 
 from .api import backtest, players, predict
 from .config import ALLOWED_ORIGINS, CONFIG_ERRORS, FRONTEND_DIR, USING_DEV_SQLITE
-from .db.database import SessionLocal, init_db
+from .db.database import SessionLocal, missing_tables
 from .db.models import MatchResult, Player
 from .schemas import HealthResponse
 from .services.model_runner import model_runner
@@ -25,10 +25,18 @@ startup_errors: list = []
 async def lifespan(app: FastAPI):
     startup_errors.clear()
     startup_errors.extend(CONFIG_ERRORS)
+    # Verify the schema; never create it. The serving process holds no DDL
+    # privileges by design -- seeding is a deliberate script, not a side effect
+    # of a deploy.
     try:
-        init_db()
+        absent = missing_tables()
+        if absent:
+            startup_errors.append(
+                "missing tables: " + ", ".join(absent)
+                + ". Run the seeding scripts in backend/scripts/."
+            )
     except Exception as error:
-        startup_errors.append(f"database init: {type(error).__name__}: {error}"[:300])
+        startup_errors.append(f"schema check: {type(error).__name__}: {error}"[:300])
     try:
         model_runner.load()
     except Exception as error:

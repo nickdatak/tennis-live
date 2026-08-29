@@ -15,6 +15,17 @@ scoring those here would measure memorisation, not skill — Random Forest's
 Brier drops from 0.217 to 0.189 and it jumps from 4th to 1st. The honest
 ranking is the one produced here.
 
+Orientation averaging
+---------------------
+Tree models are not antisymmetric: training assigned winner/loser to Player 1
+with a seeded coin flip, so each match was seen in one orientation only and
+nothing forced `f(x) == 1 - f(swap(x))`. Swapping the two players moves the
+Decision Tree's probability by up to 0.49. The API therefore averages both
+orientations (see model_runner.predict), and this script scores exactly that
+same averaged probability — otherwise the leaderboard would rank a function
+the project does not serve, and the ranking would partly depend on the seeded
+assignment in research/02_feature_creation.ipynb.
+
 Betting simulation
 ------------------
 Flat $1 stake. For each match the expected value of each side is
@@ -49,6 +60,7 @@ from app.db.models import (
     BacktestPrediction,
     BacktestRun,
 )
+from app.services.feature_builder import swap_orientation
 
 RESEARCH_DIR = PROJECT_ROOT / "research"
 HOLDOUT_MODEL_DIR = RESEARCH_DIR / "models" / "holdout_2026"
@@ -221,6 +233,7 @@ def main() -> None:
     test_frame = load_test_split()
     outcomes = test_frame["Player1Won"].astype(int).to_numpy()
     features = test_frame[MODEL_FEATURE_COLUMNS]
+    swapped_features = swap_orientation(features)
     context = recover_match_context(test_frame)
     print(
         f"Scoring {len(test_frame):,} matches "
@@ -255,15 +268,23 @@ def main() -> None:
     for model_name, filename in MODEL_FILENAMES.items():
         pipeline = joblib.load(HOLDOUT_MODEL_DIR / filename)
         assert list(pipeline.feature_names_in_) == MODEL_FEATURE_COLUMNS, model_name
-        probabilities = positive_probability(pipeline, features)
 
-        scores = score_probabilities(probabilities, outcomes)
-        # The research notebook already published these holdout scores; if ours
-        # disagree, something in the loading or feature order is wrong.
-        assert np.isclose(scores["brier"], manifest.loc[model_name], atol=1e-9), (
-            f"{model_name}: Brier {scores['brier']:.6f} != "
+        # Load check, not the reported score: the notebook published the raw
+        # single-orientation Brier, so this confirms the artifact and feature
+        # order are right before anything is derived from them.
+        single_orientation = positive_probability(pipeline, features)
+        single_brier = float(brier_score_loss(outcomes, single_orientation))
+        assert np.isclose(single_brier, manifest.loc[model_name], atol=1e-9), (
+            f"{model_name}: Brier {single_brier:.6f} != "
             f"manifest {manifest.loc[model_name]:.6f}"
         )
+
+        # Score what the API serves: the orientation-averaged probability.
+        probabilities = (
+            single_orientation
+            + (1.0 - positive_probability(pipeline, swapped_features))
+        ) / 2.0
+        scores = score_probabilities(probabilities, outcomes)
 
         bets = simulate_bets(probabilities, player1_odds, player2_odds, outcomes)
         placed = bets["bet_side"].notna()
@@ -286,7 +307,10 @@ def main() -> None:
         prediction_frames[model_name] = pd.DataFrame(
             {"prob_player1": probabilities, **bets}
         )
-        print(f"  {model_name:22s} Brier={scores['brier']:.5f}  bets={int(placed.sum()):4d}")
+        print(
+            f"  {model_name:22s} Brier={scores['brier']:.5f} "
+            f"(one orientation {single_brier:.5f})  bets={int(placed.sum()):4d}"
+        )
 
     # Bet365 as a predictor benchmark: overround-normalised implied probability.
     priced = np.isfinite(player1_odds) & np.isfinite(player2_odds)
