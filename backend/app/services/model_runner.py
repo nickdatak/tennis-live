@@ -15,13 +15,6 @@ from .feature_builder import PlayerState, build_feature_frame
 
 
 def _ensure_libgomp() -> None:
-    """Preload the GNU OpenMP runtime on Linux hosts that lack it.
-
-    LightGBM's native library requires libgomp.so.1, which serverless images
-    (e.g. Vercel's) don't ship and LightGBM wheels deliberately don't vendor.
-    Preloading our vendored copy with RTLD_GLOBAL satisfies the dependency;
-    verified against python:3.12-slim, which reproduces the same failure.
-    """
     if not sys.platform.startswith("linux"):
         return
     try:
@@ -89,8 +82,6 @@ class ModelRunner:
         per_model = {}
         for model_name, pipeline in self.pipelines.items():
             probs = self._positive_probability(pipeline, features)
-            # Row 0 is P(player1 wins); row 1 is P(player2 wins) in the
-            # swapped orientation, so 1 - row1 is a second estimate of row 0.
             symmetrized = float((probs[0] + (1.0 - probs[1])) / 2.0)
             per_model[model_name] = symmetrized
 

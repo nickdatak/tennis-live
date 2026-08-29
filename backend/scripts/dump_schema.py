@@ -1,14 +1,3 @@
-"""Regenerate backend/app/db/schema.sql from the ORM models.
-
-Usage: python3 backend/scripts/dump_schema.py
-
-schema.sql used to be maintained by hand alongside models.py -- two definitions
-of the same thing, guaranteed to drift. It is now DERIVED: models.py is the
-single source of truth and this script renders it as Postgres DDL. Rerun after
-changing any model, and never edit schema.sql directly.
-
-Touches no database; it only reads the model metadata and writes a file.
-"""
 from __future__ import annotations
 
 import datetime
@@ -24,21 +13,15 @@ from app.db.models import Base
 
 OUTPUT = Path(__file__).resolve().parents[1] / "app" / "db" / "schema.sql"
 
-HEADER = """\
--- GENERATED FILE -- DO NOT EDIT BY HAND.
--- Rendered from backend/app/db/models.py, which is the single source of truth.
--- Regenerate with: python3 backend/scripts/dump_schema.py
---
--- Run this once against a fresh Supabase project. The application never issues
--- DDL: it holds a read-only role and only verifies that these tables exist.
--- Note that CREATE TABLE IF NOT EXISTS only ever ADDS -- it will not drop a
--- table you removed from the models, nor alter a column you changed.
-"""
+HEADER = (
+    "-- GENERATED FILE -- DO NOT EDIT BY HAND. "
+    "Rendered from models.py via dump_schema.py.\n"
+)
 
 
 def main() -> None:
     dialect = postgresql.dialect()
-    parts = [HEADER, f"-- Generated {datetime.date.today().isoformat()}\n"]
+    parts = [HEADER.rstrip() + f" Generated {datetime.date.today().isoformat()}.\n"]
 
     for table in Base.metadata.sorted_tables:
         ddl = str(CreateTable(table, if_not_exists=True).compile(dialect=dialect)).strip()

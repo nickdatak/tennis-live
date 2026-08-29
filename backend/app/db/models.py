@@ -21,10 +21,6 @@ class Base(DeclarativeBase):
     pass
 
 
-# Postgres only, so a BIGINT primary key becomes BIGSERIAL as intended. This
-# alias used to carry a plain-INTEGER variant for SQLite (only an
-# `INTEGER PRIMARY KEY` aliases SQLite's rowid and auto-populates); that went
-# with the dev fallback.
 BigId = BigInteger()
 
 
@@ -55,9 +51,6 @@ class Player(Base):
 
 
 class PlayerRecentMatch(Base):
-    """One row per match; duplicates on the same date are meaningful
-    (two matches in a day both count toward the 7-day workload)."""
-
     __tablename__ = "player_recent_matches"
 
     id: Mapped[int] = mapped_column(BigId, primary_key=True, autoincrement=True)
@@ -70,13 +63,6 @@ class PlayerRecentMatch(Base):
 
 
 class MatchResult(Base):
-    """Completed main-draw matches from the research snapshot. Feeds H2H display.
-
-    Every row comes from research/data/output/matches_2015_onwards.csv — there is
-    no other ingest, so the table needs no provenance column. Retired/walkover
-    matches are never stored: the models were not trained on them, so they update
-    nothing (by design)."""
-
     __tablename__ = "match_results"
 
     id: Mapped[int] = mapped_column(BigId, primary_key=True, autoincrement=True)
@@ -90,12 +76,6 @@ class MatchResult(Base):
 
 
 class BacktestRun(Base):
-    """One backtest execution. Produced only by backend/scripts/run_backtest.py.
-
-    The dashboard never computes a backtest — it reads these tables. Rerun
-    locally when the models are replaced.
-    """
-
     __tablename__ = "backtest_runs"
 
     id: Mapped[int] = mapped_column(BigId, primary_key=True, autoincrement=True)

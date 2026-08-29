@@ -32,8 +32,6 @@ def predict(
             status_code=400, detail="player1 and player2 must be different players."
         )
 
-    # H2H is display-only: completed matches stored in match_results.
-    # It is never a model input (the six-feature contract has no H2H).
     pair_matches = session.scalars(
         select(MatchResult).where(
             ((MatchResult.winner_id == player1.id) & (MatchResult.loser_id == player2.id))

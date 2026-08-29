@@ -1,11 +1,3 @@
-"""Seed the players database from players.json (full wipe-and-reload).
-
-Usage: python3 backend/scripts/load_players.py [--json PATH]
-
-Works against DATABASE_URL from backend/.env (Supabase) or the dev SQLite
-fallback when no .env is present. The daily updater will later replace this
-one-shot seed.
-"""
 from __future__ import annotations
 
 import argparse
@@ -41,8 +33,6 @@ def main() -> None:
         raw_players = json.load(handle)
     assert isinstance(raw_players, dict) and raw_players, "Expected a dict of players."
 
-    # This wipes and reloads the players table on a real Supabase database --
-    # there is no local fallback to land on -- so say which one, loudly.
     print(f"Loading {len(raw_players):,} players from {args.json}")
     print(f"TARGET DATABASE: {DATABASE_URL.split('@')[-1]}")
 

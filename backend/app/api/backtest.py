@@ -1,9 +1,3 @@
-"""Read-only backtest endpoints.
-
-These only query the tables written by backend/scripts/run_backtest.py — the
-dashboard never runs models to produce a backtest. Rerun the script locally
-when the models are replaced.
-"""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -78,11 +72,6 @@ def equity_curves(
     surface: str = Query("All", max_length=20),
     session: Session = Depends(get_session),
 ) -> EquityResponse:
-    """Running-ROI curve for every model, optionally restricted to one surface.
-
-    All models are returned in a single response so the dashboard can toggle
-    which ones are overlaid without another request.
-    """
     run = _latest_run(session)
 
     if surface != "All":
@@ -103,8 +92,6 @@ def equity_curves(
     placed = BacktestPrediction.bet_side.is_not(None)
     won = BacktestPrediction.bet_profit > 0
 
-    # One row per model per day; the running totals are accumulated below so
-    # the SQL stays simple and portable.
     statement = (
         select(
             BacktestPrediction.model,

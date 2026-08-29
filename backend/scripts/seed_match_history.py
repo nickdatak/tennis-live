@@ -1,13 +1,3 @@
-"""Backfill match_results from the research dataset (read-only) for H2H display.
-
-Usage: python3 backend/scripts/seed_match_history.py
-
-Reads research/data/output/matches_2015_onwards.csv (never writes to
-research/) and keeps completed matches whose players exist in the players table.
-Elo/stats are NOT touched — the seed players.json already reflects this history.
-Idempotent: this CSV is the only source of match_results, so the table is wiped
-and reloaded wholesale.
-"""
 from __future__ import annotations
 
 import sys

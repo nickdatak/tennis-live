@@ -1,38 +1,3 @@
-"""Run the out-of-sample backtest and replace the stored results in the database.
-
-Usage:
-    python3 backend/scripts/run_backtest.py [--force] [--csv-only]
-
-Run this LOCALLY, and only when the models have been replaced. The dashboard
-never computes a backtest; it only reads the tables this script writes.
-
-Which models are scored, and why it matters
--------------------------------------------
-This scores `research/models/holdout_2026/*.joblib`, which were trained only
-through 2025, against the untouched 2026 split. The models the API serves
-(`research/models/*.joblib`) were trained on ALL data including 2026, so
-scoring those here would measure memorisation, not skill — Random Forest's
-Brier drops from 0.217 to 0.189 and it jumps from 4th to 1st. The honest
-ranking is the one produced here.
-
-Orientation averaging
----------------------
-Tree models are not antisymmetric: training assigned winner/loser to Player 1
-with a seeded coin flip, so each match was seen in one orientation only and
-nothing forced `f(x) == 1 - f(swap(x))`. Swapping the two players moves the
-Decision Tree's probability by up to 0.49. The API therefore averages both
-orientations (see model_runner.predict), and this script scores exactly that
-same averaged probability — otherwise the leaderboard would rank a function
-the project does not serve, and the ranking would partly depend on the seeded
-assignment in research/02_feature_creation.ipynb.
-
-Betting simulation
-------------------
-Flat $1 stake. For each match the expected value of each side is
-`probability * odds - 1`; the higher-EV side is backed when that value is
-positive. A win returns `odds - 1`, a loss returns -1. Bet365 also appears as
-a benchmark *predictor* (its normalised implied probability), not as a bettor.
-"""
 from __future__ import annotations
 
 import argparse
@@ -91,13 +56,6 @@ def load_test_split() -> pd.DataFrame:
 
 
 def recover_match_context(test_frame: pd.DataFrame) -> pd.DataFrame:
-    """Recover player names, surface and tier for each scored row.
-
-    The split file keeps only features, odds and the target. Notebook 02 built
-    it by assigning winner/loser to Player 1 with a seeded RNG, so replaying
-    that same assignment recovers the identities. The result is verified
-    against the split file rather than trusted.
-    """
     matches = pd.read_csv(ELO_MATCHES_PATH, parse_dates=["Date"], low_memory=False)
     is_valid = (
         matches["Comment"].eq("Completed")
@@ -149,12 +107,6 @@ def recover_match_context(test_frame: pd.DataFrame) -> pd.DataFrame:
 
 
 def bulk_insert(session, model_class, rows: list, chunk_size: int = 500) -> None:
-    """Insert rows via the Core table in chunks.
-
-    Passing the ORM class instead would make SQLAlchemy request RETURNING id,
-    which psycopg2 cannot batch — that turns 12k rows into 12k round trips and
-    the Supabase pooler drops the connection long before it finishes.
-    """
     table = model_class.__table__
     for start in range(0, len(rows), chunk_size):
         session.execute(insert(table), rows[start : start + chunk_size])
@@ -264,9 +216,6 @@ def main() -> None:
         pipeline = joblib.load(HOLDOUT_MODEL_DIR / filename)
         assert list(pipeline.feature_names_in_) == MODEL_FEATURE_COLUMNS, model_name
 
-        # Load check, not the reported score: the notebook published the raw
-        # single-orientation Brier, so this confirms the artifact and feature
-        # order are right before anything is derived from them.
         single_orientation = positive_probability(pipeline, features)
         single_brier = float(brier_score_loss(outcomes, single_orientation))
         assert np.isclose(single_brier, manifest.loc[model_name], atol=1e-9), (
@@ -369,9 +318,6 @@ def main() -> None:
         for row in results:
             session.add(BacktestModelResult(run_id=run.id, **row))
 
-        # Bulk inserts: ~12k rows over a network connection is far too many
-        # individual statements, so use executemany and link predictions to
-        # matches by reading the assigned ids back.
         def optional_float(value):
             return float(value) if np.isfinite(value) else None
 

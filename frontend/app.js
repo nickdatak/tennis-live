@@ -1,13 +1,6 @@
 "use strict";
 
-/* The API now runs as its own service (Railway); this page is served from
-   Vercel's CDN, so in production every call is cross-origin. config.js sets
-   window.TENNIS_API_BASE. An empty value means same-origin, which is what
-   `python3 backend/run.py` serves locally -- so local dev needs no change. */
-/* A bare host with no scheme ("api.example.com") is a RELATIVE url: the browser
-   resolves it against this page and requests
-   https://this-site/api.example.com/... , which 404s. Normalise to https so a
-   missing scheme cannot silently break every call. */
+
 function normaliseApiBase(raw) {
   const value = String(raw || "").trim().replace(/\/+$/, "");
   if (!value) return "";
@@ -17,9 +10,7 @@ function normaliseApiBase(raw) {
 const API_BASE = normaliseApiBase(window.TENNIS_API_BASE);
 const apiUrl = (path) => `${API_BASE}${path}`;
 
-/* A .railway.internal host resolves only inside Railway's private network, so
-   from a browser every call dies at DNS with no useful error. Catch that here
-   rather than letting the whole dashboard fail silently. */
+
 const API_BASE_FAULT = /\.railway\.internal/i.test(API_BASE)
   ? "config.js points at Railway's private domain. Use the public *.up.railway.app URL."
   : null;
@@ -107,9 +98,6 @@ async function refreshHealth() {
     const full = `${data.models_loaded} models · ${data.players_in_db} players`;
     badge.title = full;
     if (data.status === "ok") {
-      // The full label cannot fit beside the tab row on a phone, and an
-      // ellipsis cutting a word in half reads as broken, so show the player
-      // count alone there; the title attribute keeps the detail available.
       badge.textContent = window.matchMedia("(max-width: 620px)").matches
         ? `${data.players_in_db} players`
         : full;
@@ -126,8 +114,6 @@ async function refreshHealth() {
 
 /* ---------- player autocomplete ---------- */
 
-// All ~900 player names are fetched once and cached, so suggestions filter
-// locally with zero per-keystroke requests (important on serverless hosting).
 let playerCache = null;
 let playerCachePromise = null;
 
@@ -237,9 +223,6 @@ function setupSurfacePicker() {
 
 /* ---------- results rendering ---------- */
 
-// The prediction tab has two layouts: "compose" (the matchup form) and
-// "result" (the output bento). Switching is driven by an attribute on <body>
-// so the CSS owns the visibility rules.
 function setPredictState(state) {
   document.body.dataset.predictState = state;
 }
@@ -254,9 +237,6 @@ function setupTabs() {
       button.classList.toggle("selected", active);
       button.setAttribute("aria-selected", String(active));
     });
-    // The chart is pixel-sized to its tile, which has no size while its tab is
-    // hidden. Redrawing synchronously here works because reading the element's
-    // box forces the pending layout, so no timing guesswork is needed.
     if (tab.dataset.tab === "backtest" && backtestState.series.length) {
       renderEquityChart();
     }
@@ -388,8 +368,6 @@ function setupForm(player1Field, player2Field, surfacePicker) {
       };
       const profileParams = new URLSearchParams(request);
 
-      // Prediction and player profiles are independent, so neither request
-      // waits for the other before querying the backend.
       const [predictionResult, profileResult] = await Promise.all([
         fetchJson("/api/predict", {
           method: "POST",
@@ -431,8 +409,6 @@ function setupForm(player1Field, player2Field, surfacePicker) {
 
 /* ---------- data vintage ---------- */
 
-// The dataset is a static research snapshot, so "how current is this?" is just
-// the newest stored match. Refreshing it live is a roadmap item, not a button.
 function setDataVintage(value) {
   const el = document.getElementById("data-vintage");
   el.textContent = value ? `data through ${formatDateCompact(value)}` : "";
@@ -440,14 +416,9 @@ function setDataVintage(value) {
 
 /* ---------- backtest ---------- */
 
-// Read-only: these numbers are precomputed by backend/scripts/run_backtest.py
-// and simply queried here. Nothing is scored in the browser or the API.
 const MODEL_COLOURS = [
   "#1f385e", "#b84a43", "#4b6f40", "#b5852a", "#6b4c7a", "#2b7a8c",
 ];
-// Running ROI over a small number of bets swings wildly (a single early loss
-// is -100%), which would compress the meaningful range into a sliver. Curves
-// therefore start once a model has placed this many bets.
 const MIN_BETS_FOR_CURVE = 100;
 
 const backtestState = {
@@ -598,9 +569,6 @@ function renderEquityChart() {
     return;
   }
 
-  // The tile is a flexible grid cell, so the drawing surface is measured and
-  // the viewBox set 1:1 with it. Using a fixed viewBox with
-  // preserveAspectRatio="none" would stretch the axis labels.
   const rect = svg.getBoundingClientRect();
   const width = Math.max(360, Math.round(rect.width));
   const height = Math.max(150, Math.round(rect.height));
@@ -719,8 +687,6 @@ async function loadBacktest() {
   }
 
   backtestState.models = data.models;
-  // Colours are assigned once, by the API's default ordering, so a model keeps
-  // the same colour when the surface scope or table sort changes.
   data.models
     .filter((row) => !row.is_benchmark)
     .forEach((row, index) => {

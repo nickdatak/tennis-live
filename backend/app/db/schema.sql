@@ -1,12 +1,4 @@
--- GENERATED FILE -- DO NOT EDIT BY HAND.
--- Rendered from backend/app/db/models.py, which is the single source of truth.
--- Regenerate with: python3 backend/scripts/dump_schema.py
---
--- Run this once against a fresh Supabase project. The application never issues
--- DDL: it holds a read-only role and only verifies that these tables exist.
--- Note that CREATE TABLE IF NOT EXISTS only ever ADDS -- it will not drop a
--- table you removed from the models, nor alter a column you changed.
--- Generated 2026-08-29
+-- GENERATED FILE -- DO NOT EDIT BY HAND. Rendered from models.py via dump_schema.py. Generated 2026-08-29.
 
 CREATE TABLE IF NOT EXISTS backtest_runs (
 	id BIGSERIAL NOT NULL, 

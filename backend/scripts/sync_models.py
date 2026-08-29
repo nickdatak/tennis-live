@@ -1,7 +1,3 @@
-"""Copy the six final research pipelines into backend/models (research/ is read-only).
-
-Usage: python3 backend/scripts/sync_models.py
-"""
 from __future__ import annotations
 
 import hashlib

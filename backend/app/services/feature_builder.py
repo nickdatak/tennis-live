@@ -1,15 +1,3 @@
-"""Build the six-feature model input, mirroring the research pipeline exactly.
-
-Training semantics reproduced here (see research/02_feature_creation.ipynb):
-- MatchesLast7Days: completed matches on dates d with
-  prediction_date - 7 days <= d < prediction_date (the boundary date counts,
-  the prediction day itself never does; same-day duplicates each count).
-- LayoffOver6Months: prediction_date > last_match_date + 6 calendar months;
-  unknown when the player has no prior match (NaN -> pipeline imputer).
-- Surface Elo: a player who never played the surface starts at 1500
-  ("initial" mode, training-faithful) unless configured to trust the stored
-  value ("as_given").
-"""
 from __future__ import annotations
 
 import datetime
@@ -108,8 +96,6 @@ def _rank_diff(rank1: Optional[float], rank2: Optional[float]) -> float:
     return rank1 - rank2
 
 
-# Under a player swap the four difference columns negate, while the two layoff
-# flags are per-player and simply exchange places.
 NEGATED_COLUMNS = [
     "GlobalEloDiff",
     "SurfaceEloDiff",
@@ -120,13 +106,6 @@ SWAPPED_COLUMNS = ("Player1LayoffOver6Months", "Player2LayoffOver6Months")
 
 
 def swap_orientation(frame: pd.DataFrame) -> pd.DataFrame:
-    """Return the same rows viewed with player1 and player2 exchanged.
-
-    This is the single definition of a player swap. build_feature_frame uses it
-    to build its second row, and backend/scripts/run_backtest.py uses it to
-    score the same orientation-averaged probability the API serves — so the two
-    paths cannot drift apart.
-    """
     assert frame.columns.tolist() == MODEL_FEATURE_COLUMNS
     swapped = frame.copy()
     swapped[NEGATED_COLUMNS] = -frame[NEGATED_COLUMNS]
@@ -142,11 +121,6 @@ def build_feature_frame(
     surface: str,
     prediction_date: datetime.date,
 ) -> pd.DataFrame:
-    """Two rows: player1-first orientation, then the swapped orientation.
-
-    Predictions from both are averaged so that the result does not depend on
-    input order (training randomized orientation, so neither is canonical).
-    """
     p1_workload = player1.matches_last_7_days(prediction_date)
     p2_workload = player2.matches_last_7_days(prediction_date)
     p1_layoff = _layoff_to_float(player1.layoff_over_6_months(prediction_date))

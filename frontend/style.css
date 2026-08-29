@@ -1765,8 +1765,7 @@ input:focus-visible {
   font-size: 10px;
 }
 
-/* The base .segmented is a 3-column grid for the surface form; this picker
-   has a fourth option (Total), so it needs its own column count. */
+
 #backtest-surface-picker {
   grid-template-columns: repeat(4, auto);
   flex-shrink: 0;
@@ -1923,12 +1922,6 @@ input:focus-visible {
   line-height: 1.65;
 }
 
-/* ==========================================================================
-   App layout: tabbed, viewport-locked bento
-   The page itself never scrolls on a desktop-sized viewport; each tile is a
-   fixed cell of the grid. Small or short viewports fall back to normal
-   document flow, because a hard lock there would clip content.
-   ========================================================================== */
 
 .tabs {
   display: inline-flex;
@@ -2055,8 +2048,7 @@ body[data-tab="predict"][data-predict-state="compose"] #predict-compose {
   line-height: 1.15;
 }
 
-/* Safety valve: a tile keeps its own scroll if content genuinely overflows,
-   so the page stays fixed instead of growing. */
+
 .tile-scroll {
   flex: 1;
   min-height: 0;
@@ -2216,17 +2208,8 @@ body[data-tab="predict"][data-predict-state="compose"] #predict-compose {
   }
 }
 
-/* ==========================================================================
-   Small-screen layout
-   Below the bento breakpoint the header wraps to two rows, the compose card
-   stops floating, and wide tables shed their least decisive columns so the
-   remaining ones fit without a horizontal scroll.
-   ========================================================================== */
 
 @media (max-width: 999px) {
-  /* Row 1: identity + status. Row 2: the tab switcher, full width.
-     Without wrapping, `.tabs { width: 100% }` squeezes the status badge
-     down to a sliver and the two overlap. */
   .topbar {
     flex-wrap: wrap;
     gap: 10px 12px;
@@ -2255,8 +2238,7 @@ body[data-tab="predict"][data-predict-state="compose"] #predict-compose {
     text-align: center;
   }
 
-  /* The centred-card treatment only makes sense when there is room around it;
-     on a phone it leaves the shell floating in the middle of the backdrop. */
+
   body[data-tab="predict"][data-predict-state="compose"] {
     display: block;
     align-content: normal;
@@ -2302,8 +2284,6 @@ body[data-tab="predict"][data-predict-state="compose"] #predict-compose {
 }
 
 @media (max-width: 620px) {
-  /* Full-bleed on a phone: the shell fills the screen and the matchup card
-     centres inside it, instead of ending mid-screen against the backdrop. */
   body[data-tab="predict"][data-predict-state="compose"] .app-shell {
     display: flex;
     flex-direction: column;
@@ -2326,8 +2306,6 @@ body[data-tab="predict"][data-predict-state="compose"] #predict-compose {
 }
 
 @media (max-width: 620px) {
-  /* The headline percentages are sized for a wide tile; at 51px the pair
-     needs 486px inside a 291px column and the second one runs off-screen. */
   .mean-percents .pct { font-size: clamp(24px, 8.5vw, 34px); }
   .mean-names { font-size: 11px; }
 
@@ -2341,9 +2319,6 @@ body[data-tab="predict"][data-predict-state="compose"] #predict-compose {
 }
 
 @media (max-width: 620px) {
-  /* A legacy rule pins every .model-table to min-width:600px so it scrolls
-     sideways. With the bar column dropped and the padding tightened the
-     remaining columns fit, so let the table shrink to its container. */
   .tile-models .model-table,
   .tile-bt-table .model-table { min-width: 0; }
 

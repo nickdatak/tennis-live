@@ -16,8 +16,6 @@ from .schemas import HealthResponse
 from .services.model_runner import model_runner
 
 
-# Startup failures are recorded, not raised: the app must stay alive so
-# /api/health can report exactly what is broken.
 startup_errors: list = []
 
 
@@ -25,9 +23,6 @@ startup_errors: list = []
 async def lifespan(app: FastAPI):
     startup_errors.clear()
     startup_errors.extend(CONFIG_ERRORS)
-    # Verify the schema; never create it. The serving process holds no DDL
-    # privileges by design -- seeding is a deliberate script, not a side effect
-    # of a deploy.
     try:
         absent = missing_tables()
         if absent:
@@ -46,8 +41,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Tennis Live", lifespan=lifespan)
 
-# The frontend is served from Vercel's CDN and calls this API cross-origin.
-# No cookies or auth headers are involved, so credentials stay off.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -71,8 +64,6 @@ def health() -> HealthResponse:
             raise RuntimeError(NO_DATABASE)
         with SessionLocal() as session:
             players_in_db = session.scalar(select(func.count(Player.id)))
-            # The dashboard shows this as the data vintage: the snapshot is
-            # static, so the newest stored match is exactly how current it is.
             data_through = session.scalar(select(func.max(MatchResult.date)))
     except Exception as error:  # pragma: no cover - depends on external DB
         database_status = f"error: {type(error).__name__}"
@@ -91,8 +82,5 @@ def health() -> HealthResponse:
     )
 
 
-# Mounted last so /api keeps precedence. In production the CDN serves the
-# frontend, so this directory is usually absent; the mount exists so that
-# `python3 backend/run.py` still serves the whole app from one origin locally.
 if FRONTEND_DIR.is_dir():
     app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")
