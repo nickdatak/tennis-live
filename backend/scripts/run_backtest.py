@@ -47,12 +47,7 @@ import pandas as pd
 from sklearn.metrics import brier_score_loss, log_loss
 from sqlalchemy import insert, select
 
-from app.config import (
-    MODEL_FEATURE_COLUMNS,
-    MODEL_FILENAMES,
-    PROJECT_ROOT,
-    USING_DEV_SQLITE,
-)
+from app.config import MODEL_FEATURE_COLUMNS, MODEL_FILENAMES, PROJECT_ROOT
 from app.db.database import SessionLocal, init_db
 from app.db.models import (
     BacktestMatch,
@@ -427,9 +422,8 @@ def main() -> None:
         bulk_insert(session, BacktestPrediction, prediction_rows)
 
         session.commit()
-        target = "dev SQLite" if USING_DEV_SQLITE else "the configured database"
         print(
-            f"Replaced {removed} previous run(s); stored run #{run.id} in {target}: "
+            f"Replaced {removed} previous run(s); stored run #{run.id}: "
             f"{len(results)} model rows, {len(context):,} matches, "
             f"{len(long_frame):,} predictions."
         )

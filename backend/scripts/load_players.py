@@ -16,7 +16,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.config import DATABASE_URL, PROJECT_ROOT, USING_DEV_SQLITE
+from app.config import DATABASE_URL, PROJECT_ROOT
 from app.db.database import SessionLocal, init_db
 from app.db.models import Player, PlayerRecentMatch
 
@@ -41,9 +41,10 @@ def main() -> None:
         raw_players = json.load(handle)
     assert isinstance(raw_players, dict) and raw_players, "Expected a dict of players."
 
-    target = "dev SQLite" if USING_DEV_SQLITE else "configured database"
-    print(f"Loading {len(raw_players):,} players from {args.json} into {target}")
-    print(f"DATABASE_URL target: {DATABASE_URL.split('@')[-1]}")
+    # This wipes and reloads the players table on a real Supabase database --
+    # there is no local fallback to land on -- so say which one, loudly.
+    print(f"Loading {len(raw_players):,} players from {args.json}")
+    print(f"TARGET DATABASE: {DATABASE_URL.split('@')[-1]}")
 
     init_db()
     with SessionLocal() as session:

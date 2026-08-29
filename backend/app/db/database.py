@@ -1,29 +1,39 @@
-"""Engine and session management for Supabase Postgres (or dev SQLite fallback)."""
+"""Engine and session management for Supabase Postgres."""
 from __future__ import annotations
 
+from fastapi import HTTPException
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from ..config import DATA_DIR, DATABASE_URL, USING_DEV_SQLITE
+from ..config import DATABASE_URL
 from .models import Base
 
-if USING_DEV_SQLITE:
-    try:
-        DATA_DIR.mkdir(parents=True, exist_ok=True)
-    except OSError:
-        pass  # read-only serverless filesystem; init_db will surface the error
+NO_DATABASE = (
+    "DATABASE_URL is not set. Supabase Postgres is the only supported "
+    "database; there is no local fallback."
+)
 
 # One long-lived process (a container, not a per-request function), so a
 # real pool is both possible and correct: it is created once and reused for
 # the life of the process instead of being rebuilt on every cold start.
 # pool_recycle stays modest because the Supabase pooler drops idle sessions.
-_pool_kwargs = (
-    {}
-    if USING_DEV_SQLITE
-    else {"pool_size": 5, "max_overflow": 5, "pool_recycle": 300}
-)
-engine = create_engine(DATABASE_URL, pool_pre_ping=True, future=True, **_pool_kwargs)
-SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+#
+# A missing URL leaves engine/SessionLocal as None rather than raising here:
+# import has to succeed for /api/health to report the misconfiguration, and
+# every caller below refuses explicitly.
+if DATABASE_URL:
+    engine = create_engine(
+        DATABASE_URL,
+        pool_pre_ping=True,
+        future=True,
+        pool_size=5,
+        max_overflow=5,
+        pool_recycle=300,
+    )
+    SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+else:
+    engine = None
+    SessionLocal = None
 
 
 def init_db() -> None:
@@ -36,6 +46,8 @@ def init_db() -> None:
     boot let an orphaned `refresh_log` survive in production long after the
     model was deleted. Schema changes belong in the scripts, run deliberately.
     """
+    if engine is None:
+        raise RuntimeError(NO_DATABASE)
     Base.metadata.create_all(engine)
 
 
@@ -47,12 +59,16 @@ def missing_tables() -> list:
     """
     from sqlalchemy import inspect
 
+    if engine is None:
+        raise RuntimeError(NO_DATABASE)
     present = set(inspect(engine).get_table_names())
     return sorted(name for name in Base.metadata.tables if name not in present)
 
 
 def get_session():
     """FastAPI dependency yielding a database session."""
+    if SessionLocal is None:
+        raise HTTPException(status_code=503, detail=NO_DATABASE)
     session: Session = SessionLocal()
     try:
         yield session

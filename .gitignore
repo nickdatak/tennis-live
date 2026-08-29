@@ -6,7 +6,6 @@ __pycache__/
 .pytest_cache/
 
 backend/.env
-backend/data/dev.db
 
 backend/data/backtest_predictions.csv
 

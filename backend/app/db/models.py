@@ -21,12 +21,11 @@ class Base(DeclarativeBase):
     pass
 
 
-# Postgres gets BIGINT/BIGSERIAL as intended. SQLite must get plain INTEGER:
-# only an `INTEGER PRIMARY KEY` column aliases SQLite's rowid, so a BIGINT
-# primary key never auto-populates and every insert fails the NOT NULL check.
-# That would break the dev fallback in backend/app/db/database.py, which is the
-# whole point of the fallback existing.
-BigId = BigInteger().with_variant(Integer, "sqlite")
+# Postgres only, so a BIGINT primary key becomes BIGSERIAL as intended. This
+# alias used to carry a plain-INTEGER variant for SQLite (only an
+# `INTEGER PRIMARY KEY` aliases SQLite's rowid and auto-populates); that went
+# with the dev fallback.
+BigId = BigInteger()
 
 
 class Player(Base):

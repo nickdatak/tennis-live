@@ -29,22 +29,26 @@ def _load_dotenv(path: Path) -> None:
 
 _load_dotenv(BACKEND_DIR / ".env")
 
-# Supabase session-pooler URI goes in backend/.env as DATABASE_URL.
-# Without it we fall back to a local SQLite file so development still works.
+# Supabase (pooler URI in DATABASE_URL) is the only database.
+#
+# The local SQLite fallback was removed rather than kept as a convenience: it
+# did not enforce foreign keys -- SQLite defaults PRAGMA foreign_keys to OFF
+# and nothing here turned it on -- so the match_results -> players constraint
+# that stops load_players.py renumbering seeded player ids simply did not
+# exist locally. Dev and production disagreed on the one behaviour that
+# matters most, which is worse than having no local database at all.
+#
 # Configuration problems are collected here instead of raising at import —
-# a crashed serverless function cannot explain itself, /api/health can.
+# a process that dies during import cannot explain itself, /api/health can.
 CONFIG_ERRORS = []
 
-DEV_SQLITE_URL = f"sqlite:///{DATA_DIR / 'dev.db'}"
 DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
-USING_DEV_SQLITE = not DATABASE_URL
-if USING_DEV_SQLITE:
-    if os.environ.get("PRODUCTION", "").strip() in {"1", "true", "yes"}:
-        CONFIG_ERRORS.append(
-            "PRODUCTION=1 but DATABASE_URL is not set. "
-            "Set DATABASE_URL to the Supabase pooler URI and redeploy."
-        )
-    DATABASE_URL = DEV_SQLITE_URL
+if not DATABASE_URL:
+    CONFIG_ERRORS.append(
+        "DATABASE_URL is not set and there is no local fallback. Put the "
+        "Supabase pooler URI in backend/.env locally, or in the hosting "
+        "platform's variables when deployed."
+    )
 
 # The exact six-column contract every trained pipeline expects, in order.
 MODEL_FEATURE_COLUMNS = [
