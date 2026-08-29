@@ -1,0 +1,33 @@
+# Files excluded from the Railway build context.
+#
+# The API needs very little: backend/app, backend/models, backend/vendor,
+# backend/run.py, requirements.txt and railway.json. Everything below was
+# being uploaded and baked into the image for no reason.
+
+# ~50MB: raw spreadsheets, derived CSVs, and a second copy of every model
+# artifact. The serving process never reads any of it -- models load from
+# backend/models/ (put there by scripts/sync_models.py), and the backtest is
+# precomputed into the database by a script run locally, never at request
+# time. RESEARCH_MODELS_DIR in app/config.py is a path constant used only by
+# that sync script, which does not run on this host.
+research/
+
+# Config for the other half of the split deployment (the Vercel CDN).
+vercel.json
+.vercelignore
+
+# Local-only artifacts. backend/data/ holds backtest_predictions.csv, an audit
+# artifact written by run_backtest.py; the API reads backtest results from the
+# database, never from this file.
+backend/data/
+.pytest_cache/
+.DS_Store
+**/.DS_Store
+*.ipynb
+.claude/
+
+# NOTE: frontend/ is deliberately NOT excluded. It is only ~1.8MB, and keeping
+# it means the Railway host also serves the dashboard at / as a fallback if the
+# Vercel CDN is unreachable during a demo. Add `frontend/` here to make this
+# service API-only -- which is what the StaticFiles mount in app/main.py
+# already expects in production ("this directory is usually absent").
